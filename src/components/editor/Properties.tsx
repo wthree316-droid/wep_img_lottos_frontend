@@ -5,7 +5,56 @@ import {
 } from 'react-icons/fa';
 import { API_BASE_URL } from '../../config/api';
 
+// ✅ Component สำหรับเลือกสี Stroke และ Shadow
+const StyleEffectControl = ({ 
+    label, 
+    value, 
+    onChange 
+}: { 
+    label: string, 
+    value?: string, 
+    onChange: (val: string) => void 
+}) => {
+    return (
+        <div className="space-y-2">
+            <label className="text-xs font-semibold text-gray-500 uppercase flex justify-between">
+                {label}
+                {value && (
+                    <button 
+                        onClick={() => onChange('')}
+                        className="text-[10px] text-red-500 hover:underline"
+                    >
+                        ลบ
+                    </button>
+                )}
+            </label>
+            <div className="flex gap-2">
+                {['#000000', '#ffffff', '#ff0000', '#0000ff', '#ffff00'].map(color => (
+                    <button
+                        key={color}
+                        onClick={() => onChange(color)}
+                        className={`w-6 h-6 rounded-full border border-gray-300 shadow-sm transition ${value === color ? 'ring-2 ring-blue-500 scale-110' : ''}`}
+                        style={{ backgroundColor: color }}
+                    />
+                ))}
+                {/* Custom Color */}
+                <div className="w-6 h-6 rounded-full border border-gray-300 relative overflow-hidden">
+                    <input 
+                        type="color" 
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        onChange={(e) => onChange(e.target.value)}
+                    />
+                    <div className="w-full h-full bg-linear-to-br from-gray-100 to-gray-300 flex items-center justify-center text-[8px] text-gray-500">
+                        +
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 export const Properties = () => {
+
   const { 
     elements, selectedId, updateElement, removeElement, 
     canvasConfig, setCanvasSize, backgroundImage, setBackgroundImage 
@@ -228,6 +277,32 @@ export const Properties = () => {
              <option value="Mali">Mali (มะลิ)</option>
              <option value="Sriracha">Sriracha (ศรีราชา)</option>
           </select>
+        </div>
+
+        {/* ✅ เพิ่มส่วน Effect: Stroke & Shadow */}
+        <div className="p-3 bg-gray-50 rounded-lg border border-gray-100 space-y-4">
+            <h3 className="text-xs font-bold text-gray-400 mb-2">เอฟเฟกต์ตัวอักษร ✨</h3>
+            
+            {/* ขอบตัวหนังสือ (Stroke) */}
+            <StyleEffectControl 
+                label="ขอบตัวหนังสือ (Stroke)"
+                value={selectedElement.style_config.stroke}
+                onChange={(color) => updateElement(selectedElement.id, {
+                    style_config: { ...selectedElement.style_config, stroke: color }
+                })}
+            />
+
+            {/* เงา (Shadow) */}
+            <StyleEffectControl 
+                label="เงา (Shadow)"
+                value={selectedElement.style_config.textShadow}
+                onChange={(color) => {
+                    const shadowVal = color ? `2px 2px 4px ${color}` : '';
+                    updateElement(selectedElement.id, {
+                        style_config: { ...selectedElement.style_config, textShadow: shadowVal }
+                    });
+                }}
+            />
         </div>
 
         {/* Color & Align */}

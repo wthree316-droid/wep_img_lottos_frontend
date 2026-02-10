@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FaCog, FaCheckSquare, FaSquare, FaDownload, FaCalendarAlt, FaMagic } from 'react-icons/fa';
+import { FaCog, FaCheckSquare, FaSquare, FaDownload, FaCalendarAlt, FaMagic, FaSearch, FaClock, FaPalette, FaCheck } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
 import { LogoutButton } from '../components/LogoutButton';
 import { useEditorStore, type EditorElement } from '../stores/useEditorStore';
@@ -11,7 +11,7 @@ import { toBlob } from 'html-to-image';
 import { preloadImage, waitForFonts } from '../utils/imageHelpers';
 import { apiClient } from '../config/api';
 import { BATCH_GENERATION_CONFIG, IMAGE_CAPTURE_CONFIG, DATA_KEYS } from '../config/constants';
-import type { Lottery, Template, GeneratePayload, GenerateResponse, TemplateSlot } from '../types';
+import type { Lottery, Template, GeneratePayload, GenerateResponse, TemplateSlot, User } from '../types';
 
 const formatDateThai = (dateStr: string) => {
   if (!dateStr) return "{วันที่}";
@@ -21,8 +21,48 @@ const formatDateThai = (dateStr: string) => {
   });
 };
 
+const CountdownTimer = ({ targetDate }: { targetDate: string }) => {
+    const [timeLeft, setTimeLeft] = useState("");
+    const [isExpired, setIsExpired] = useState(false);
+
+    useEffect(() => {
+        const calculateTimeLeft = () => {
+            const difference = +new Date(targetDate) - +new Date();
+            if (difference > 0) {
+                const hours = Math.floor((difference / (1000 * 60 * 60))); 
+                const minutes = Math.floor((difference / 1000 / 60) % 60);
+                const seconds = Math.floor((difference / 1000) % 60);
+                
+                const h = hours.toString().padStart(2, '0');
+                const m = minutes.toString().padStart(2, '0');
+                const s = seconds.toString().padStart(2, '0');
+                
+                setTimeLeft(`${h}:${m}:${s}`);
+                setIsExpired(false);
+            } else {
+                setTimeLeft("ปิดรับแล้ว");
+                setIsExpired(true);
+            }
+        };
+
+        calculateTimeLeft();
+        const timer = setInterval(calculateTimeLeft, 1000);
+
+        return () => clearInterval(timer);
+    }, [targetDate]);
+
+    return (
+        <span className={`text-[10px] flex items-center gap-1 px-2 py-0.5 rounded-full font-bold ${
+            isExpired ? 'bg-gray-200 text-gray-500' : 'bg-red-50 text-red-600 animate-pulse'
+        }`}>
+            <FaClock /> {timeLeft}
+        </span>
+    );
+};
+
 export const DashboardPage = () => {
   const [lotteries, setLotteries] = useState<Lottery[]>([]);
+  const [filteredLotteries, setFilteredLotteries] = useState<Lottery[]>([]);
   const [loading, setLoading] = useState(true);
   const { isAdmin, user } = useAuth();
   
@@ -32,16 +72,84 @@ export const DashboardPage = () => {
   const [commonSeed, setCommonSeed] = useState('');
   const [isZipping, setIsZipping] = useState(false);
   const [progress, setProgress] = useState('');
-  // 🔥 Key สำหรับสั่งล้างกระดาน (Remount)
   const [refreshKey, setRefreshKey] = useState(0);
+  
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+  const [myTemplates, setMyTemplates] = useState<Template[]>([]);
+  const [currentTemplateId, setCurrentTemplateId] = useState<string | null>(null);
 
   const { setElements, setCanvasSize, setBackgroundImage, canvasConfig } = useEditorStore();
 
   useEffect(() => {
     const loadLotteries = async () => {
       try {
+        setLoading(true);
         const data = await apiClient.get<Lottery[]>('/api/lotteries');
-        setLotteries(data);
+        
+        // 1. Prepare User Template (Override Level 1)
+        let userTemplate: Template | null = null;
+        if (user?.assigned_template_id) {
+            try {
+                userTemplate = await apiClient.get<Template>(`/api/templates/${user.assigned_template_id}`);
+            } catch (e) {
+                console.error("Failed to load user template");
+            }
+        }
+
+        // 2. Prepare System Default Template (Override Level 3 - Fallback)
+        let systemTemplate: Template | null = null;
+        if (!userTemplate) {
+            try {
+                const res = await apiClient.get<Template[]>('/api/templates');
+                // Backend sorts by created_at desc, so index 0 is latest active
+                const activeTemplates = res.filter(t => t.is_active);
+                if (activeTemplates.length > 0) {
+                    systemTemplate = activeTemplates[0];
+                }
+            } catch (e) { }
+        }
+
+        // 3. Map Lotteries with Effective Template
+        const updatedLotteries = data.map(lotto => {
+            // Priority 1: User Assigned Template (Overrides everything)
+            if (userTemplate) {
+                return {
+                    ...lotto,
+                    template_id: userTemplate.id,
+                    templates: {
+                        background_url: userTemplate.background_url,
+                        base_width: userTemplate.base_width,
+                        base_height: userTemplate.base_height
+                    }
+                };
+            }
+            
+            // Priority 2: Lottery Specific Template (Already in lotto data)
+            if (lotto.templates?.background_url) {
+                return lotto;
+            }
+
+            // Priority 3: System Default (If lottery has no template)
+            if (systemTemplate) {
+                 return {
+                    ...lotto,
+                    template_id: systemTemplate.id,
+                    templates: {
+                        background_url: systemTemplate.background_url,
+                        base_width: systemTemplate.base_width,
+                        base_height: systemTemplate.base_height
+                    }
+                };
+            }
+
+            // Fallback: No template image (Dice icon)
+            return lotto;
+        });
+
+        setLotteries(updatedLotteries);
+        setFilteredLotteries(updatedLotteries);
         setLoading(false);
       } catch (err: any) {
         console.error(err);
@@ -50,8 +158,23 @@ export const DashboardPage = () => {
       }
     };
 
-    loadLotteries();
-  }, []);
+    if (user) {
+        loadLotteries();
+        if (user.assigned_template_id) {
+            setCurrentTemplateId(user.assigned_template_id);
+        }
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (!searchTerm) {
+        setFilteredLotteries(lotteries);
+        return;
+    }
+    const lower = searchTerm.toLowerCase();
+    const filtered = lotteries.filter(l => l.name.toLowerCase().includes(lower));
+    setFilteredLotteries(filtered);
+  }, [searchTerm, lotteries]);
 
   const toggleSelection = (id: string) => {
     const newSet = new Set(selectedIds);
@@ -61,8 +184,49 @@ export const DashboardPage = () => {
   };
 
   const toggleAll = () => {
-    if (selectedIds.size === lotteries.length) setSelectedIds(new Set()); 
-    else setSelectedIds(new Set(lotteries.map(l => l.id))); 
+    if (selectedIds.size === filteredLotteries.length) setSelectedIds(new Set()); 
+    else setSelectedIds(new Set(filteredLotteries.map(l => l.id))); 
+  };
+
+  const handleOpenTemplateModal = async () => {
+      if (!user) return;
+
+      try {
+          // ✅ Force Fetch User to ensure allowed_template_ids is fresh
+          const currentUser = await apiClient.get<User>(`/api/users/${user.id}`);
+          
+          if (currentUser.allowed_template_ids && currentUser.allowed_template_ids.length > 0) {
+              const allTemplates = await apiClient.get<Template[]>('/api/templates');
+              const allowedIds = currentUser.allowed_template_ids;
+              const allowedTemplates = allTemplates.filter(t => allowedIds.includes(t.id));
+              setMyTemplates(allowedTemplates);
+              setIsTemplateModalOpen(true);
+          } else {
+              alert("คุณยังไม่ได้ถูกกำหนดแม่พิมพ์ทางเลือก (โปรดติดต่อแอดมิน)");
+          }
+      } catch (e) {
+          console.error(e);
+          alert("ไม่สามารถโหลดข้อมูลผู้ใช้งานได้");
+      }
+  };
+
+  const handleSelectTemplate = async (templateId: string) => {
+      try {
+          if (!user) return;
+          await apiClient.put(`/api/users/${user.id}`, { assigned_template_id: templateId });
+          
+          const updatedUser = await apiClient.get<User>(`/api/users/${user.id}`);
+          localStorage.setItem('lotto_user', JSON.stringify(updatedUser));
+
+          setCurrentTemplateId(templateId);
+          alert("✅ เปลี่ยนธีมสำเร็จ! ระบบจะรีโหลดเพื่อแสดงผล...");
+          setIsTemplateModalOpen(false);
+          
+          window.location.reload(); 
+      } catch (e) {
+          console.error(e);
+          alert("เปลี่ยนธีมไม่สำเร็จ");
+      }
   };
 
   const handleBatchDownload = async () => {
@@ -82,19 +246,28 @@ export const DashboardPage = () => {
         setProgress(`กำลังสร้าง (${i + 1}/${selectedLotteries.length}): ${lotto.name}`);
 
         try {
-          // 1. ♻️ สั่งล้างกระดานใหม่ทุกรอบ (Force Remount)
           setRefreshKey(prev => prev + 1);
           setElements([]);
           setBackgroundImage('');
-          // พักนิดนึงให้ React เคลียร์ค่า
           await new Promise(r => setTimeout(r, BATCH_GENERATION_CONFIG.stateUpdateDelay));
 
-          // 2. โหลดข้อมูล
-          let templateId = lotto.template_id;
+          // ✅ Use logic similar to useEffect for consistency
+          let templateId = lotto.template_id; 
           
-          // Override ด้วย User Template ถ้ามี
+          // Note: lotteries state is already updated with user's template preference in useEffect
+          // so lotto.template_id should be correct here if selected from UI.
+          // But to be safe, we re-check priority (redundant but safe)
           if (user?.assigned_template_id) {
             templateId = user.assigned_template_id;
+          }
+
+          if (!templateId) {
+             // Try to find system default if still null
+             try {
+                 const res = await apiClient.get<Template[]>('/api/templates');
+                 const active = res.filter(t => t.is_active);
+                 if (active.length > 0) templateId = active[0].id;
+             } catch(e) {}
           }
 
           if (!templateId) {
@@ -112,21 +285,27 @@ export const DashboardPage = () => {
           const genPayload: GeneratePayload = {
             template_id: template.id,
             user_seed: commonSeed,
-            slot_configs: template.template_slots!.map((s: TemplateSlot) => ({
-              id: s.id,
-              slot_type: s.data_key ? 'user_input' : 'system_label',
-              data_key: s.data_key || undefined
-            }))
+            slot_configs: template.template_slots!.map((s: TemplateSlot) => {
+                let slotType = 'system_label';
+                // ✅ Robust type checking for batch mode too
+                if (s.slot_type === 'qr_code' || s.data_key === DATA_KEYS.QR_CODE) slotType = 'qr_code';
+                else if (s.slot_type === 'static_text' || s.data_key === DATA_KEYS.LINE_ID) slotType = 'static_text';
+                else if (s.data_key) slotType = 'user_input';
+                
+                return {
+                    id: s.id,
+                    slot_type: slotType as any,
+                    data_key: s.data_key || undefined
+                };
+            })
           };
           
           const genData: GenerateResponse = await apiClient.post('/api/generate', genPayload);
 
-          // 3. รอโหลดรูปพื้นหลังจริง
           if (template.background_url) {
             await preloadImage(template.background_url);
           }
 
-          // 4. ตั้งค่า Store
           setCanvasSize(template.base_width, template.base_height);
           setBackgroundImage(template.background_url);
           
@@ -138,7 +317,7 @@ export const DashboardPage = () => {
 
             return {
               id: slot.id,
-              type: 'text' as const,
+              type: slot.slot_type === 'qr_code' ? 'qr_code' : (slot.slot_type === 'static_text' ? 'static_text' : 'text'), 
               label_text: text,
               dataKey: slot.data_key,
               pos_x: slot.pos_x, 
@@ -151,11 +330,9 @@ export const DashboardPage = () => {
 
           setElements(finalElements as EditorElement[]);
 
-          // 5. รอ Render (ปรับเวลาให้เหมาะสม)
           await waitForFonts();
           await new Promise(r => setTimeout(r, BATCH_GENERATION_CONFIG.renderDelay));
 
-          // 6. 📸 จับภาพ
           const node = document.getElementById('batch-capture-canvas');
           if (node) {
             const blob = await toBlob(node, {
@@ -211,8 +388,16 @@ export const DashboardPage = () => {
             </p>
           </div>
           <div className="flex items-center gap-4">
+            {/* ✅ ปุ่มเปลี่ยนธีมสำหรับ Member */}
+            <button 
+                onClick={handleOpenTemplateModal}
+                className="flex items-center gap-2 bg-purple-50 text-purple-600 px-4 py-2 rounded-lg font-bold hover:bg-purple-100 transition"
+            >
+                <FaPalette /> เปลี่ยนธีมแม่พิมพ์
+            </button>
+
             {isAdmin && (
-                <Link to="/admin/dashboard" className="text-gray-500 hover:text-gray-700 flex items-center gap-2">
+                <Link to="/admin/dashboard" className="text-gray-500 hover:text-gray-700 flex items-center gap-2 border-l pl-4 border-gray-300">
                 <FaCog /> เมนูแอดมิน
                 </Link>
             )}
@@ -221,20 +406,33 @@ export const DashboardPage = () => {
           </div>
         </div>
 
-        {/* Tab Selection */}
-        <div className="flex gap-2 mb-6">
-            <button 
-                onClick={() => setMode('single')}
-                className={`flex-1 py-3 font-bold rounded-lg transition ${mode === 'single' ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
-            >
-                🎯 เลือกทีละใบ (Single)
-            </button>
-            <button 
-                onClick={() => setMode('batch')}
-                className={`flex-1 py-3 font-bold rounded-lg transition ${mode === 'batch' ? 'bg-purple-600 text-white shadow-md' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
-            >
-                📦 เหมาเข่ง หลายใบ (Batch)
-            </button>
+        {/* Tab & Search */}
+        <div className="flex flex-col md:flex-row gap-4 mb-6">
+            <div className="flex gap-2 flex-1">
+                <button 
+                    onClick={() => setMode('single')}
+                    className={`flex-1 py-3 font-bold rounded-lg transition ${mode === 'single' ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
+                >
+                    🎯 เลือกทีละใบ (Single)
+                </button>
+                <button 
+                    onClick={() => setMode('batch')}
+                    className={`flex-1 py-3 font-bold rounded-lg transition ${mode === 'batch' ? 'bg-purple-600 text-white shadow-md' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
+                >
+                    📦 เหมาเข่ง หลายใบ (Batch)
+                </button>
+            </div>
+            
+            <div className="relative w-full md:w-80">
+                <span className="absolute left-3 top-3.5 text-gray-400"><FaSearch /></span>
+                <input 
+                    type="text" 
+                    placeholder="ค้นหาชื่อหวย..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 p-3 rounded-lg border border-gray-200 outline-none focus:ring-2 focus:ring-blue-500"
+                />
+            </div>
         </div>
 
         {loading ? (
@@ -244,13 +442,13 @@ export const DashboardPage = () => {
             {/* --- MODE 1: SINGLE --- */}
             {mode === 'single' && (
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                    {lotteries.map((lotto) => (
+                    {filteredLotteries.map((lotto) => (
                     <Link 
                         key={lotto.id} 
                         to={`/play/${lotto.id}`}
                         className="bg-white rounded-xl shadow-sm hover:shadow-md transition p-4 border border-transparent hover:border-blue-500 group flex flex-col items-center text-center cursor-pointer"
                     >
-                        <div className="w-16 h-16 rounded-full bg-blue-50 mb-3 overflow-hidden border border-gray-100 group-hover:scale-110 transition">
+                        <div className="w-16 h-16 rounded-full bg-blue-50 mb-3 overflow-hidden border border-gray-100 group-hover:scale-110 transition relative">
                             {lotto.templates?.background_url ? (
                                 <img src={lotto.templates.background_url} className="w-full h-full object-cover" />
                             ) : (
@@ -258,6 +456,13 @@ export const DashboardPage = () => {
                             )}
                         </div>
                         <h3 className="font-bold text-gray-800 group-hover:text-blue-600">{lotto.name}</h3>
+                        
+                        {/* ✅ 3. Countdown Timer */}
+                        {lotto.closing_time && (
+                            <div className="mt-1">
+                                <CountdownTimer targetDate={lotto.closing_time} />
+                            </div>
+                        )}
                     </Link>
                     ))}
                 </div>
@@ -325,12 +530,12 @@ export const DashboardPage = () => {
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="font-bold text-gray-700">ติ๊กเลือกหวยที่ต้องการ</h3>
                             <button onClick={toggleAll} className="text-sm text-blue-600 hover:underline">
-                                {selectedIds.size === lotteries.length ? 'ยกเลิกทั้งหมด' : 'เลือกทั้งหมด'}
+                                {selectedIds.size === filteredLotteries.length ? 'ยกเลิกทั้งหมด' : 'เลือกทั้งหมด'}
                             </button>
                         </div>
 
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                            {lotteries.map((lotto) => {
+                            {filteredLotteries.map((lotto) => {
                                 const isSelected = selectedIds.has(lotto.id);
                                 return (
                                     <div 
@@ -364,10 +569,7 @@ export const DashboardPage = () => {
             {/* 🌑 ฉากหลังทึบ */}
             <div className="absolute inset-0 bg-black/95 z-40"></div>
 
-            {/* 🕵️‍♂️ CANVAS ลับ (ตัวจับภาพ)
-                ✅ แก้ไข: วางไว้ที่ 0,0 ของหน้าจอเลย (ซ่อนไว้หลังฉากดำ)
-                ห้ามใช้ translate(-50%, -50%) เพราะจะทำให้ library คำนวณพิกัดเพี้ยน
-            */}
+            {/* 🕵️‍♂️ CANVAS ลับ (ตัวจับภาพ) */}
             <div 
                 id="batch-capture-canvas"
                 style={{
@@ -376,9 +578,8 @@ export const DashboardPage = () => {
                     left: 0,
                     width: canvasConfig.width,
                     height: canvasConfig.height,
-                    zIndex: 10, // อยู่หลังฉากดำ (40)
+                    zIndex: 10,
                     pointerEvents: 'none',
-                    // opacity: 0 // ❌ ห้ามใช้ opacity เดี๋ยวภาพขาว
                 }}
             >
                 <EditorCanvas key={refreshKey} readOnly={true} />
@@ -410,6 +611,54 @@ export const DashboardPage = () => {
             </div>
         </div>
       )}
+
+      {/* --- TEMPLATE SELECTION MODAL --- */}
+      {isTemplateModalOpen && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl p-6 max-h-[80vh] flex flex-col">
+                  <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                          <FaPalette /> เลือกธีมแม่พิมพ์ของคุณ
+                      </h3>
+                      <button onClick={() => setIsTemplateModalOpen(false)} className="text-gray-400 hover:text-gray-600">ปิด</button>
+                  </div>
+                  
+                  <div className="flex-1 overflow-y-auto p-2">
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                          {myTemplates.map(t => (
+                              <div 
+                                  key={t.id}
+                                  onClick={() => handleSelectTemplate(t.id)}
+                                  className={`border-2 rounded-xl overflow-hidden cursor-pointer transition hover:shadow-md relative group ${
+                                      currentTemplateId === t.id ? 'border-purple-600 ring-2 ring-purple-100' : 'border-gray-100'
+                                  }`}
+                              >
+                                  <div className="aspect-[9/16] bg-gray-100 relative">
+                                      {t.background_url ? (
+                                          <img src={t.background_url} className="w-full h-full object-cover" />
+                                      ) : (
+                                          <div className="flex items-center justify-center h-full text-gray-300">NO IMAGE</div>
+                                      )}
+                                      
+                                      {currentTemplateId === t.id && (
+                                          <div className="absolute inset-0 bg-purple-600/20 flex items-center justify-center">
+                                              <div className="bg-white rounded-full p-2 text-purple-600 shadow-lg">
+                                                  <FaCheck />
+                                              </div>
+                                          </div>
+                                      )}
+                                  </div>
+                                  <div className="p-3 bg-white">
+                                      <h4 className="font-bold text-sm text-gray-800 truncate">{t.name}</h4>
+                                  </div>
+                              </div>
+                          ))}
+                      </div>
+                  </div>
+              </div>
+          </div>
+      )}
+
     </div>
   );
 };

@@ -1,21 +1,39 @@
 import { useEditorStore } from '../../stores/useEditorStore';
+import { DATA_KEYS } from '../../config/constants';
+import { FaFont, FaQrcode, FaLine } from 'react-icons/fa';
 
 export const Toolbox = () => {
   const { addElement } = useEditorStore();
   return (
-    <div className="w-64 bg-white border-r border-gray-200 p-4 flex flex-col gap-4">
-      <h2 className="font-bold text-lg mb-2">เครื่องมือ test 123</h2>
+    <div className="w-64 bg-white border-r border-gray-200 p-4 flex flex-col gap-4 shadow-sm z-20">
+      <h2 className="font-bold text-lg mb-2 text-gray-700">เครื่องมือออกแบบ</h2>
+      
       <button 
         onClick={() => addElement('text')}
-        className="p-3 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition shadow-sm border border-blue-200"
+        className="flex items-center gap-3 p-3 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition shadow-sm border border-blue-200 font-medium"
       >
-        + เพิ่มข้อความ (Text)
+        <FaFont /> เพิ่มข้อความ (Text)
       </button>
+
+      <div className="h-px bg-gray-100 my-1"></div>
+
       <button 
-        className="p-3 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition shadow-sm border border-green-200"
+        onClick={() => addElement('qr_code', DATA_KEYS.QR_CODE)}
+        className="flex items-center gap-3 p-3 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition shadow-sm border border-red-200 font-medium"
       >
-        + เพิ่มรูปภาพ (Coming Soon)
+        <FaQrcode /> เพิ่ม QR Code กลาง
       </button>
+
+      <button 
+        onClick={() => addElement('static_text', DATA_KEYS.LINE_ID)}
+        className="flex items-center gap-3 p-3 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition shadow-sm border border-green-200 font-medium"
+      >
+        <FaLine /> เพิ่มข้อความ Line ID
+      </button>
+      
+      <p className="text-xs text-gray-400 mt-4 text-center">
+        * QR Code และ Line ID จะดึงค่าจาก "ค่ากลางระบบ" โดยอัตโนมัติ
+      </p>
     </div>
   );
 };

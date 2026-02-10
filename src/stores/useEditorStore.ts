@@ -1,13 +1,15 @@
 import { create } from 'zustand';
-import { DEFAULT_CANVAS_CONFIG } from '../config/constants';
+import { DEFAULT_CANVAS_CONFIG, DATA_KEYS } from '../config/constants';
 
-export type ElementType = 'text' | 'image' | 'box';
+// ✅ เพิ่ม type
+export type ElementType = 'text' | 'image' | 'qr_code' | 'static_text';
 
 export interface EditorElement {
   id: string;
   type: ElementType;
   label_text: string;
   dataKey?: string; 
+  image_url?: string; // ✅ เพิ่มเผื่อรูปภาพ/QR
   pos_x: number;
   pos_y: number;
   width: number;
@@ -19,6 +21,8 @@ export interface EditorElement {
     fontFamily: string;
     textAlign: 'left' | 'center' | 'right';
     fontWeight: 'normal' | 'bold';
+    textShadow?: string; // ✅ เพิ่ม textShadow
+    stroke?: string; // ✅ เพิ่มขอบตัวหนังสือ
   };
 }
 
@@ -29,12 +33,11 @@ interface EditorState {
   backgroundImage: string;
   
 
-  addElement: (type: ElementType) => void;
+  addElement: (type: ElementType, dataKey?: string) => void; // ✅ รับ dataKey ได้
   updateElement: (id: string, changes: Partial<EditorElement>) => void;
   selectElement: (id: string | null) => void;
   removeElement: (id: string) => void;
   
-  // ✅ เพิ่ม Actions ใหม่
   setBackgroundImage: (url: string) => void;
   setCanvasSize: (width: number, height: number) => void;
   setElements: (elements: EditorElement[]) => void;
@@ -46,27 +49,46 @@ export const useEditorStore = create<EditorState>((set) => ({
   canvasConfig: DEFAULT_CANVAS_CONFIG,
   backgroundImage: '',
 
-  addElement: (type) =>
-    set((state) => ({
-      elements: [
-        ...state.elements,
-        {
-          id: crypto.randomUUID(),
-          type,
-          label_text: type === 'text' ? 'ข้อความใหม่' : '',
-          dataKey: '', 
-          pos_x: 10, pos_y: 10,
-          width: 20, height: 5,
-          style_config: { 
-            color: '#000000', 
-            fontSize: 24, 
-            fontFamily: 'Sarabun', 
-            textAlign: 'center',
-            fontWeight: 'normal'
-          },
-        },
-      ],
-    })),
+  addElement: (type, dataKey) =>
+    set((state) => {
+        const id = crypto.randomUUID();
+        let label_text = '';
+        let width = 20;
+        let height = 5;
+        let fontSize = 24;
+
+        if (type === 'text') {
+            label_text = 'ข้อความใหม่';
+        } else if (type === 'qr_code') {
+            label_text = ''; // QR Code ใช้ image_url แต่เก็บใน label_text ชั่วคราวหรือรอ API
+            width = 15; // สี่เหลี่ยมจัตุรัส
+            height = (width * state.canvasConfig.width) / state.canvasConfig.height; // คำนวณ aspect ratio ให้เป็นจัตุรัสตามหน้าจอ
+        } else if (type === 'static_text') {
+            label_text = '{Line ID}';
+            if (dataKey === DATA_KEYS.LINE_ID) label_text = '{Line ID System}';
+        }
+
+        return {
+            elements: [
+                ...state.elements,
+                {
+                    id,
+                    type,
+                    label_text,
+                    dataKey: dataKey || '', 
+                    pos_x: 10, pos_y: 10,
+                    width, height,
+                    style_config: { 
+                        color: '#000000', 
+                        fontSize, 
+                        fontFamily: 'Sarabun', 
+                        textAlign: 'center',
+                        fontWeight: 'normal'
+                    },
+                },
+            ],
+        };
+    }),
 
   updateElement: (id, changes) =>
     set((state) => ({
@@ -83,7 +105,6 @@ export const useEditorStore = create<EditorState>((set) => ({
       selectedId: null,
     })),
 
-  // ✅ ฟังก์ชันใหม่
   setBackgroundImage: (url) => set({ backgroundImage: url }),
   setCanvasSize: (width, height) => set({ canvasConfig: { width, height } }),
   setElements: (elements) => set({ elements }),

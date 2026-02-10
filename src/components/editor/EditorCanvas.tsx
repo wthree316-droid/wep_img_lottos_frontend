@@ -2,21 +2,16 @@ import { useEffect, useState } from 'react';
 import Moveable from 'react-moveable';
 import type { OnDrag, OnResize, OnResizeEnd } from 'react-moveable'; 
 import { useEditorStore } from '../../stores/useEditorStore';
-
-
-// ✅ 1. เพิ่ม Interface รับค่า readOnly
 interface EditorCanvasProps {
   readOnly?: boolean;
 }
 
-// ✅ 2. รับ Props เข้ามา (ค่า Default คือ false = แก้ไขได้ปกติ)
 export const EditorCanvas = ({ readOnly = false }: EditorCanvasProps) => {
   const { elements, selectedId, selectElement, updateElement, canvasConfig, backgroundImage } = useEditorStore();
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
   const [target, setTarget] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
-    // 🔒 ถ้าเป็น readOnly ไม่ต้องไปหา Target (ปิดการเลือก)
     if (readOnly) {
       setTarget(null);
       return;
@@ -31,7 +26,6 @@ export const EditorCanvas = ({ readOnly = false }: EditorCanvasProps) => {
   }, [selectedId, elements, readOnly]);
 
   const handleBackgroundClick = (e: React.MouseEvent) => {
-    // 🔒 ถ้า readOnly ห้ามกด Deselect
     if (readOnly) return;
 
     if (e.target === container || e.currentTarget === e.target) {
@@ -40,10 +34,9 @@ export const EditorCanvas = ({ readOnly = false }: EditorCanvasProps) => {
   };
 
   return (
-    // 🎨 แก้ไขจุดที่ 1: ถ้า readOnly ให้ลบ padding และ bg-gray-200 ออก ให้เหลือแค่ container เปล่าๆ
     <div className={readOnly 
-        ? "w-full h-full relative overflow-hidden" // โหมดจับภาพ: เต็มจอ ไม่มีขอบ
-        : "flex-1 bg-gray-200 h-full flex items-center justify-center overflow-hidden p-8 relative" // โหมดแก้ไข: มีขอบเทา
+        ? "w-full h-full relative overflow-hidden" 
+        : "flex-1 bg-gray-200 h-full flex items-center justify-center overflow-hidden p-8 relative" 
     }>
       <div
         ref={setContainer} 
@@ -51,10 +44,9 @@ export const EditorCanvas = ({ readOnly = false }: EditorCanvasProps) => {
         className="relative bg-white shadow-2xl origin-center"
         style={{
           aspectRatio: `${canvasConfig.width} / ${canvasConfig.height}`,
-          // 🎨 แก้ไขจุดที่ 2: ถ้า readOnly ให้สูง 100% (ไม่ย่อ 90%)
           height: readOnly ? '100%' : '90%', 
-          width: readOnly ? '100%' : 'auto', // บังคับกว้างเต็มถ้าจับภาพ
-          backgroundImage: backgroundImage ? `url(${backgroundImage})` : 'url(https://placehold.co/1080x1920/png?text=No+Image)',
+          width: readOnly ? '100%' : 'auto', 
+          backgroundImage: backgroundImage ? `url(${backgroundImage})` : 'url(https://placehold.co/1080x1920/png?text=No+Background)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           userSelect: 'none', 
@@ -78,16 +70,33 @@ export const EditorCanvas = ({ readOnly = false }: EditorCanvasProps) => {
               width: `${el.width}%`,
               height: `${el.height}%`,
               ...el.style_config,
-              fontSize: `clamp(12px, ${el.style_config.fontSize}px, 10vw)`,
+              // ✅ แก้ไข: ใช้ Pixel ตรงๆ ถ้าเป็น readOnly หรือ export เพื่อความแม่นยำ
+              fontSize: `${el.style_config.fontSize}px`, 
               zIndex: 10,
               cursor: readOnly ? 'default' : 'grab',
               display: 'flex',
               alignItems: 'center',
               justifyContent: el.style_config.textAlign === 'center' ? 'center' : el.style_config.textAlign === 'right' ? 'flex-end' : 'flex-start',
-              border: (!readOnly && selectedId === el.id) ? 'none' : (!readOnly ? '1px dashed rgba(0,0,0,0.2)' : 'none'),
+              border: (!readOnly && selectedId === el.id) ? '2px solid #3b82f6' : (!readOnly ? '1px dashed rgba(0,0,0,0.1)' : 'none'),
+              // ✅ เพิ่ม Stroke และ Shadow
+              textShadow: el.style_config.textShadow,
+              WebkitTextStroke: el.style_config.stroke ? `1px ${el.style_config.stroke}` : '0', // Stroke
             }}
           >
-            <span style={{ pointerEvents: 'none', whiteSpace: 'nowrap' }}>{el.label_text}</span>
+            {/* ✅ LOGIC การแสดงผลตามประเภท */}
+            {el.type === 'qr_code' ? (
+                // กรณีเป็น QR Code
+                <img 
+                    src={el.label_text || "https://placehold.co/200x200/png?text=QR"} 
+                    alt="QR Code"
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                />
+            ) : (
+                // กรณีเป็น Text หรือ Static Text
+                <span style={{ pointerEvents: 'none', whiteSpace: 'nowrap' }}>
+                    {el.label_text}
+                </span>
+            )}
           </div>
         ))}
 
@@ -133,7 +142,7 @@ export const EditorCanvas = ({ readOnly = false }: EditorCanvasProps) => {
                 pos_y: (relativeY / parentHeight) * 100,
                 });
             }}
-            keepRatio={false}
+            keepRatio={false} // QR Code อาจจะอยากให้ keepRatio แต่ปล่อยอิสระไปก่อน
             throttleDrag={0}
             renderDirections={["nw", "n", "ne", "w", "e", "sw", "s", "se"]}
             padding={{ left: 0, top: 0, right: 0, bottom: 0 }}

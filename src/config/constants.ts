@@ -14,7 +14,10 @@ export const DATA_KEYS = {
   DIGIT_3: 'digit_3',
   DIGIT_2_TOP: 'digit_2_top',
   DIGIT_2_BOTTOM: 'digit_2_bottom',
-  RUNNING: 'running'
+  RUNNING: 'running',
+  // ✅ เพิ่มใหม่
+  QR_CODE: 'qr_code',
+  LINE_ID: 'line_id'
 } as const;
 
 export const IMAGE_CAPTURE_CONFIG = {

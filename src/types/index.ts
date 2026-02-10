@@ -5,7 +5,7 @@
 export interface TemplateSlot {
   id: string;
   template_id: string;
-  slot_type: 'system_label' | 'user_input' | 'auto_data';
+  slot_type: 'system_label' | 'user_input' | 'auto_data' | 'qr_code' | 'static_text'; // ✅ เพิ่ม type
   label_text: string;
   data_key: string | null;
   pos_x: number;
@@ -24,6 +24,14 @@ export interface TemplateSlot {
   created_at: string;
 }
 
+export interface TemplateBackground { // ✅ เพิ่ม interface
+    id: string;
+    template_id: string;
+    name: string;
+    url: string;
+    created_at: string;
+}
+
 export interface Template {
   id: string;
   name: string;
@@ -32,9 +40,11 @@ export interface Template {
   base_height: number;
   background_url: string;
   is_active: boolean;
+  is_master?: boolean; // ✅ เพิ่ม
   created_at: string;
   updated_at: string;
   template_slots?: TemplateSlot[];
+  template_backgrounds?: TemplateBackground[]; // ✅ เพิ่ม
 }
 
 export interface Lottery {
@@ -43,6 +53,7 @@ export interface Lottery {
   template_id: string;
   is_active: boolean;
   created_at: string;
+  closing_time?: string; // ✅ เพิ่ม
   templates?: {
     background_url: string;
     base_width: number;
@@ -56,6 +67,7 @@ export interface User {
   name: string;
   role: 'admin' | 'member';
   assigned_template_id?: string;
+  allowed_template_ids?: string[]; // ✅ เพิ่มฟิลด์
   created_at: string;
 }
 
@@ -64,7 +76,7 @@ export interface GeneratePayload {
   user_seed?: string;
   slot_configs: Array<{
     id: string;
-    slot_type: 'system_label' | 'user_input' | 'auto_data';
+    slot_type: 'system_label' | 'user_input' | 'auto_data' | 'qr_code' | 'static_text';
     data_key?: string;
   }>;
 }

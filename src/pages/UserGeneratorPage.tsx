@@ -2,13 +2,13 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { EditorCanvas } from '../components/editor/EditorCanvas';
 import { useEditorStore } from '../stores/useEditorStore';
-import { FaArrowLeft, FaMagic, FaDownload, FaCalendarAlt } from 'react-icons/fa';
+import { FaArrowLeft, FaMagic, FaDownload, FaCalendarAlt, FaPalette } from 'react-icons/fa';
 import { toPng } from 'html-to-image';
 import { useAuth } from '../contexts/AuthContext';
 import { preloadImage, waitForFonts } from '../utils/imageHelpers';
 import { apiClient } from '../config/api';
 import { IMAGE_CAPTURE_CONFIG, DATA_KEYS } from '../config/constants';
-import type { GeneratePayload, GenerateResponse } from '../types';
+import type { GeneratePayload, GenerateResponse, Template } from '../types';
 
 const formatDateThai = (dateStr: string) => {
   if (!dateStr) return "{วันที่}";
@@ -33,6 +33,10 @@ export const UserGeneratorPage = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  
+  // ✅ New State for Multi-style
+  const [templateData, setTemplateData] = useState<Template | null>(null);
+  const [activeBgId, setActiveBgId] = useState<string>('default');
 
   useEffect(() => {
     if (!id) return;
@@ -53,12 +57,15 @@ export const UserGeneratorPage = () => {
           }
         }
 
-        // 2. ถ้าสุดท้ายยังไม่มี Template (ทั้งจากหวย และจาก User)
+        // 2. ถ้าสุดท้ายยังไม่มี Template
         if (!template) {
             alert("หวยรายการนี้ยังไม่ได้ผูกแม่พิมพ์ และคุณยังไม่ได้ตั้งค่าแม่พิมพ์ส่วนตัว");
             setLoading(false);
             return;
         }
+
+        // ✅ เก็บข้อมูล Template ตัวเต็มไว้ใช้แสดง Sidebar
+        setTemplateData(template);
 
         if (template.background_url) {
           await preloadImage(template.background_url);
@@ -69,6 +76,8 @@ export const UserGeneratorPage = () => {
         
         const loadedElements = template.template_slots.map((slot: any) => {
           let initialText = slot.label_text;
+          
+          // Logic เดิม
           if (slot.data_key === DATA_KEYS.LOTTERY_NAME) {
             initialText = lottery.name;
           } else if (slot.data_key === DATA_KEYS.LOTTERY_DATE) {
@@ -77,7 +86,7 @@ export const UserGeneratorPage = () => {
 
           return {
             id: slot.id,
-            type: 'text',
+            type: slot.slot_type === 'qr_code' ? 'qr_code' : (slot.slot_type === 'static_text' ? 'static_text' : 'text'), // ✅ Correct Type Mapping
             label_text: initialText,
             dataKey: slot.data_key,
             pos_x: slot.pos_x,
@@ -111,27 +120,30 @@ export const UserGeneratorPage = () => {
     setIsGenerating(true);
     try {
       const payload: GeneratePayload = {
-        template_id: id!,
+        template_id: templateData?.id || id!,
         user_seed: seed,
-        slot_configs: elements.map(el => ({
-          id: el.id,
-          slot_type: el.dataKey ? 'user_input' : 'system_label',
-          data_key: el.dataKey
-        }))
+        slot_configs: elements.map(el => {
+            // ✅ FIX: Determine slot_type correctly based on element type or dataKey
+            let slotType = 'system_label';
+            if (el.type === 'qr_code' || el.dataKey === DATA_KEYS.QR_CODE) slotType = 'qr_code';
+            else if (el.type === 'static_text' || el.dataKey === DATA_KEYS.LINE_ID) slotType = 'static_text';
+            else if (el.dataKey) slotType = 'user_input';
+            
+            return {
+                id: el.id,
+                slot_type: slotType as any,
+                data_key: el.dataKey
+            };
+        })
       };
 
       const data: GenerateResponse = await apiClient.post('/api/generate', payload);
       
-      // ✅ อัปเดตโดยเช็คจาก ID แทน dataKey (แก้ปัญหาเลขซ้ำ)
       elements.forEach(el => {
-        if (el.dataKey && 
-            el.dataKey !== DATA_KEYS.LOTTERY_NAME && 
-            el.dataKey !== DATA_KEYS.LOTTERY_DATE) {
-            
-          // เช็คว่าใน results มีค่าของ ID นี้ไหม
-          if (data.results[el.id]) {
-            updateElement(el.id, { label_text: data.results[el.id] });
-          }
+        // อัปเดตข้อมูลทุกอย่างที่ Backend ส่งมา (รวม QR Code / Line ID ด้วย)
+        if (data.results[el.id]) {
+           // ถ้าเป็นรูปภาพ (QR Code) ให้ใช้ label_text เก็บ URL แทน
+           updateElement(el.id, { label_text: data.results[el.id] });
         }
       });
 
@@ -149,7 +161,7 @@ export const UserGeneratorPage = () => {
     setIsDownloading(true);
     try {
       await waitForFonts();
-      await new Promise(r => setTimeout(r, 300));
+      await new Promise(r => setTimeout(r, 500)); // รอเพิ่มนิดหน่อย
 
       const dataUrl = await toPng(node, IMAGE_CAPTURE_CONFIG);
       
@@ -165,20 +177,29 @@ export const UserGeneratorPage = () => {
     }
   };
 
+  // ✅ ฟังก์ชันเปลี่ยนพื้นหลัง
+  const handleSelectBackground = (url: string, bgId: string) => {
+    setActiveBgId(bgId);
+    setBackgroundImage(url);
+  };
+
   if (loading) return <div className="text-center p-20">กำลังโหลดแม่พิมพ์...</div>;
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
-      <div className="bg-white p-4 shadow-sm flex items-center justify-between px-8">
+      {/* Header */}
+      <div className="bg-white p-4 shadow-sm flex items-center justify-between px-8 z-30 relative">
         <Link to="/" className="flex items-center gap-2 text-gray-500 hover:text-blue-600">
           <FaArrowLeft /> กลับหน้าหลัก
         </Link>
-        <h1 className="font-bold text-xl">เครื่องคำนวณหวย 🎰</h1>
+        <h1 className="font-bold text-xl hidden md:block">เครื่องคำนวณหวย 🎰</h1>
         <div className="w-24"></div> 
       </div>
 
       <div className="flex-1 flex flex-col md:flex-row h-[calc(100vh-64px)] overflow-hidden relative">
-        <div className="w-full md:w-80 bg-white p-6 shadow-lg z-10 flex flex-col gap-6 overflow-y-auto relative">
+        
+        {/* LEFT SIDEBAR: Controls */}
+        <div className="w-full md:w-80 bg-white p-6 shadow-lg z-20 flex flex-col gap-6 overflow-y-auto relative border-r border-gray-200">
           <div className="bg-orange-50 p-4 rounded-xl border border-orange-100">
              <label className="text-sm font-bold text-orange-900 mb-2 flex items-center gap-2">
                <FaCalendarAlt /> เลือกงวดวันที่
@@ -227,7 +248,7 @@ export const UserGeneratorPage = () => {
           </button>
         </div>
 
-        {/* Center: Preview (User มองเห็นอันนี้) */}
+        {/* CENTER: Preview */}
         <div className="flex-1 bg-gray-200 relative overflow-hidden flex items-center justify-center p-4 z-0">
              <div 
                 id="lotto-ticket-preview" 
@@ -245,6 +266,46 @@ export const UserGeneratorPage = () => {
              </div>
         </div>
 
+        {/* RIGHT SIDEBAR: Style Selector (เฉพาะถ้ามี Backgrounds) */}
+        {(templateData?.template_backgrounds && templateData.template_backgrounds.length > 0) && (
+            <div className="w-full md:w-72 bg-white p-4 shadow-lg z-20 overflow-y-auto border-l border-gray-200">
+                <h3 className="font-bold text-gray-700 mb-4 flex items-center gap-2 sticky top-0 bg-white py-2 z-10">
+                    <FaPalette className="text-purple-600" /> เลือกธีมพื้นหลัง
+                </h3>
+                <div className="grid grid-cols-2 gap-3 pb-4">
+                    {/* Default */}
+                    <div 
+                        onClick={() => handleSelectBackground(templateData.background_url, 'default')}
+                        className={`cursor-pointer rounded-lg overflow-hidden border-2 transition relative aspect-[9/16] group ${
+                            activeBgId === 'default' ? 'border-purple-600 ring-2 ring-purple-100' : 'border-gray-100 hover:border-gray-300'
+                        }`}
+                    >
+                        <img src={templateData.background_url} className="w-full h-full object-cover" />
+                        <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-[10px] p-1.5 text-center truncate backdrop-blur-sm">
+                            มาตรฐาน
+                        </div>
+                    </div>
+
+                    {/* Alternatives */}
+                    {templateData.template_backgrounds.map((bg: any) => (
+                        <div 
+                            key={bg.id}
+                            onClick={() => handleSelectBackground(bg.url, bg.id)}
+                            className={`cursor-pointer rounded-lg overflow-hidden border-2 transition relative aspect-[9/16] group ${
+                                activeBgId === bg.id ? 'border-purple-600 ring-2 ring-purple-100' : 'border-gray-100 hover:border-gray-300'
+                            }`}
+                        >
+                            <img src={bg.url} className="w-full h-full object-cover" />
+                            <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-[10px] p-1.5 text-center truncate backdrop-blur-sm">
+                                {bg.name}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        )}
+
+        {/* Hidden Canvas */}
         <div
             id="hidden-capture-canvas-single"
             style={{
@@ -253,12 +314,11 @@ export const UserGeneratorPage = () => {
                 left: 0, 
                 width: canvasConfig.width,
                 height: canvasConfig.height,
-                zIndex: -50, // ซ่อนไว้หลังสุด
+                zIndex: -50,
                 pointerEvents: 'none',
-                
             }}
         >
-            <EditorCanvas key={seed + selectedDate} readOnly={true} />
+            <EditorCanvas key={seed + selectedDate + activeBgId} readOnly={true} />
         </div>
 
       </div>
