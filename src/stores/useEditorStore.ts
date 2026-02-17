@@ -53,15 +53,15 @@ export const useEditorStore = create<EditorState>((set) => ({
     set((state) => {
         const id = crypto.randomUUID();
         let label_text = '';
-        let width = 20;
-        let height = 5;
-        let fontSize = 24;
+        let width = 60;
+        let height = 10;
+        const fontSize = Math.round(state.canvasConfig.height * 0.05);
 
         if (type === 'text') {
             label_text = 'ข้อความใหม่';
         } else if (type === 'qr_code') {
             label_text = ''; // QR Code ใช้ image_url แต่เก็บใน label_text ชั่วคราวหรือรอ API
-            width = 15; // สี่เหลี่ยมจัตุรัส
+            width = 25; // สี่เหลี่ยมจัตุรัส
             height = (width * state.canvasConfig.width) / state.canvasConfig.height; // คำนวณ aspect ratio ให้เป็นจัตุรัสตามหน้าจอ
         } else if (type === 'static_text') {
             label_text = '{Line ID}';

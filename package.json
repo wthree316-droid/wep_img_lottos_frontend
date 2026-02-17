@@ -17,13 +17,16 @@
     "file-saver": "^2.0.5",
     "html-to-image": "^1.11.13",
     "jszip": "^3.10.1",
+    "konva": "^10.2.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-icons": "^5.5.0",
+    "react-konva": "^19.2.2",
     "react-moveable": "^0.56.0",
     "react-router-dom": "^7.13.0",
     "react-selecto": "^1.26.3",
     "tailwind-merge": "^3.4.0",
+    "use-image": "^1.1.4",
     "zustand": "^5.0.11"
   },
   "devDependencies": {

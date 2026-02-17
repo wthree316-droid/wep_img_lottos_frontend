@@ -1,12 +1,12 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import type { ReactNode } from 'react'; // ✅ Import type ReactNode แก้ Error JSX
+import type { ReactNode } from 'react';
 import { AdminEditorPage } from './pages/AdminEditorPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { DashboardAdminPage } from './pages/DashboardAdminPage';
 import { UserGeneratorPage } from './pages/UserGeneratorPage';
 import { LoginPage } from './pages/LoginPage';
 import { useAuth } from './contexts/AuthContext';
-
+import { AdminUserWorkspacePage } from './pages/AdminUserWorkspacePage'; 
 // 🛡️ ป้อมยาม: ตรวจเช็คสิทธิ์ก่อนให้เข้า
 // ✅ เปลี่ยน type ของ children เป็น ReactNode (แก้ Error: Cannot find namespace 'JSX')
 const ProtectedRoute = ({ children, requireAdmin = false }: { children: ReactNode, requireAdmin?: boolean }) => {
@@ -58,6 +58,12 @@ function App() {
         <Route path="/admin/create" element={
           <ProtectedRoute requireAdmin={true}>
             <AdminEditorPage />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/admin/user/:userId" element={
+          <ProtectedRoute requireAdmin={true}>
+            <AdminUserWorkspacePage />
           </ProtectedRoute>
         } />
 

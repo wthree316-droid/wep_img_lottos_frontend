@@ -21,7 +21,7 @@ export const Toolbox = () => {
         onClick={() => addElement('qr_code', DATA_KEYS.QR_CODE)}
         className="flex items-center gap-3 p-3 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition shadow-sm border border-red-200 font-medium"
       >
-        <FaQrcode /> เพิ่ม QR Code กลาง
+        <FaQrcode /> เพิ่ม QR Code
       </button>
 
       <button 
@@ -31,9 +31,10 @@ export const Toolbox = () => {
         <FaLine /> เพิ่มข้อความ Line ID
       </button>
       
-      <p className="text-xs text-gray-400 mt-4 text-center">
-        * QR Code และ Line ID จะดึงค่าจาก "ค่ากลางระบบ" โดยอัตโนมัติ
-      </p>
+      <div className="mt-4 p-3 bg-yellow-50 rounded-lg text-xs text-yellow-800 border border-yellow-200">
+        <strong>💡 หมายเหตุ:</strong> <br/>
+        QR Code และ Line ID จะถูกดึงมาจาก <u>การตั้งค่าส่วนตัว</u> ของเจ้าของแม่พิมพ์นี้โดยอัตโนมัติ
+      </div>
     </div>
   );
 };

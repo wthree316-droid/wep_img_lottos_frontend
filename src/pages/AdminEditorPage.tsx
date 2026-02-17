@@ -1,10 +1,12 @@
+// src/pages/AdminEditorPage.tsx
+
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'; // ✅ เพิ่ม useSearchParams
 import { Toolbox } from '../components/editor/Toolbox';
 import { EditorCanvas } from '../components/editor/EditorCanvas';
 import { Properties } from '../components/editor/Properties';
 import { useEditorStore } from '../stores/useEditorStore';
-import { FaSave, FaArrowLeft, FaCheckSquare, FaSquare, FaTrash, FaImage } from 'react-icons/fa';
+import { FaSave, FaArrowLeft, FaCheckSquare, FaSquare, FaTrash, FaImage, FaUserTag } from 'react-icons/fa';
 import { apiClient } from '../config/api';
 import { DEFAULT_CANVAS_CONFIG } from '../config/constants';
 import type { Template, TemplateBackground } from '../types';
@@ -12,6 +14,9 @@ import type { Template, TemplateBackground } from '../types';
 export const AdminEditorPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams(); // ✅ ดึง Query String
+  const ownerId = searchParams.get('owner_id'); // ✅ รับ owner_id จาก URL (ถ้ามี)
+
   const { 
     elements, canvasConfig, backgroundImage, 
     setElements, setCanvasSize, setBackgroundImage 
@@ -23,22 +28,30 @@ export const AdminEditorPage = () => {
   const [templateName, setTemplateName] = useState("My Lotto Template");
   const [isMaster, setIsMaster] = useState(false);
   const [backgrounds, setBackgrounds] = useState<Partial<TemplateBackground>[]>([]);
-  
-  // ✅ 4. Checkbox "Use Original Size"
   const [useOriginalSize, setUseOriginalSize] = useState(false);
 
+  // State สำหรับเก็บชื่อเจ้าของ (Optional: เอาไว้โชว์ให้แอดมินมั่นใจ)
+  const [ownerName, setOwnerName] = useState<string | null>(null);
+
   useEffect(() => {
+    // ถ้ามี owner_id ให้ไปดึงชื่อมาโชว์หน่อย แอดมินจะได้ไม่งง
+    if (ownerId) {
+        apiClient.get(`/api/users/${ownerId}`).then(u => setOwnerName(u.name || u.username)).catch(() => {});
+    }
+
     if (!id) {
+      // โหมดสร้างใหม่
       setElements([]);
       setCanvasSize(DEFAULT_CANVAS_CONFIG.width, DEFAULT_CANVAS_CONFIG.height);
       setBackgroundImage('');
-      setTemplateName("แม่พิมพ์ใหม่");
+      setTemplateName(ownerId ? `แม่พิมพ์ของ ${ownerId}` : "แม่พิมพ์ใหม่"); // ตั้งชื่อ Default ให้สื่อความหมาย
       setIsMaster(false);
       setBackgrounds([]);
       setUseOriginalSize(false);
       return;
     }
 
+    // โหมดแก้ไข
     const loadTemplate = async () => {
       setLoading(true);
       try {
@@ -50,6 +63,11 @@ export const AdminEditorPage = () => {
         
         if (data.template_backgrounds) {
             setBackgrounds(data.template_backgrounds);
+        }
+
+        // ถ้าแม่พิมพ์นี้มีเจ้าของ ก็ให้เซ็ต ownerName (ถ้า Backend ส่งมา หรือเราจะยึดตาม URL ก็ได้)
+        if (data.owner_id) {
+             apiClient.get(`/api/users/${data.owner_id}`).then(u => setOwnerName(u.name || u.username)).catch(() => {});
         }
 
         const loadedElements = data.template_slots!.map((slot) => ({
@@ -74,9 +92,8 @@ export const AdminEditorPage = () => {
     };
 
     loadTemplate();
-  }, [id]);
+  }, [id, ownerId]); // เพิ่ม ownerId ใน dependency
 
-  // ✅ Effect: เมื่อเปลี่ยนรูปพื้นหลัง ถ้าติ๊ก "ใช้ขนาดจริง" ให้ปรับขนาด Canvas
   useEffect(() => {
     if (useOriginalSize && backgroundImage) {
         const img = new Image();
@@ -99,13 +116,13 @@ export const AdminEditorPage = () => {
         background_url: backgroundImage,
         is_master: isMaster,
         backgrounds: backgrounds,
+        // ✅ ส่ง owner_id กลับไปบันทึกด้วย (ถ้ามี)
+        owner_id: ownerId || null, 
         slots: elements.map(el => {
           let dbSlotType = 'system_label';
           if (el.dataKey) dbSlotType = 'auto_data';
-          
           if (el.type === 'qr_code') dbSlotType = 'qr_code';
           if (el.type === 'static_text') dbSlotType = 'static_text';
-
           if (el.type === 'text' && !el.dataKey) dbSlotType = 'system_label';
 
           return {
@@ -129,7 +146,13 @@ export const AdminEditorPage = () => {
       }
 
       alert(`✅ บันทึกสำเร็จเรียบร้อย!`);
-      navigate('/admin/dashboard');
+      
+      // ✅ บันทึกเสร็จ ถ้ามี owner_id ให้เด้งกลับไปหน้า User Workspace ของคนนั้น
+      if (ownerId) {
+          navigate(`/admin/user/${ownerId}`);
+      } else {
+          navigate('/admin/dashboard');
+      }
 
     } catch (error: any) {
       console.error(error);
@@ -139,21 +162,18 @@ export const AdminEditorPage = () => {
     }
   };
 
+  // ... (ส่วน handleAddBackground, removeBackground เหมือนเดิม) ...
   const handleAddBackground = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     const file = e.target.files[0];
-    
     try {
         const formData = new FormData();
         formData.append('file', file);
         const res = await fetch(`${import.meta.env.VITE_API_URL}/api/upload`, { method: 'POST', body: formData });
         if (!res.ok) throw new Error('Upload failed');
         const data = await res.json();
-        
         setBackgrounds([...backgrounds, { name: `แบบที่ ${backgrounds.length + 1}`, url: data.url }]);
-        
         if (!backgroundImage) setBackgroundImage(data.url);
-
     } catch (error: any) {
         alert("อัปโหลดไม่สำเร็จ: " + error.message);
     }
@@ -173,21 +193,33 @@ export const AdminEditorPage = () => {
       {/* Top Bar */}
       <div className="absolute top-0 left-0 right-0 h-16 bg-white border-b border-gray-200 z-40 px-4 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-4">
-            <button onClick={() => navigate('/admin/dashboard')} className="flex items-center gap-2 text-gray-500 hover:text-blue-600 font-bold">
+            <button 
+                // ✅ ปุ่มกลับ ถ้ามี owner_id ให้กลับไปหน้า User Workspace
+                onClick={() => ownerId ? navigate(`/admin/user/${ownerId}`) : navigate('/admin/dashboard')} 
+                className="flex items-center gap-2 text-gray-500 hover:text-blue-600 font-bold"
+            >
                 <FaArrowLeft /> กลับ
             </button>
             <div className="h-6 w-px bg-gray-300"></div>
-            <input 
-                type="text" 
-                value={templateName}
-                onChange={(e) => setTemplateName(e.target.value)}
-                className="text-lg font-bold text-gray-800 outline-none border-b border-transparent hover:border-gray-300 focus:border-blue-500 bg-transparent px-2 py-1"
-                placeholder="ชื่อแม่พิมพ์..."
-            />
+            
+            <div className="flex flex-col">
+                <input 
+                    type="text" 
+                    value={templateName}
+                    onChange={(e) => setTemplateName(e.target.value)}
+                    className="text-lg font-bold text-gray-800 outline-none border-b border-transparent hover:border-gray-300 focus:border-blue-500 bg-transparent px-2 py-0"
+                    placeholder="ชื่อแม่พิมพ์..."
+                />
+                {/* ✅ โชว์ว่ากำลังสร้างให้ใคร */}
+                {ownerName && (
+                    <span className="text-xs text-purple-600 font-medium px-2 flex items-center gap-1">
+                        <FaUserTag /> กำลังสร้างให้: {ownerName}
+                    </span>
+                )}
+            </div>
         </div>
 
         <div className="flex items-center gap-4">
-            {/* ✅ Checkbox: Use Original Size */}
             <div 
                 className="flex items-center gap-2 cursor-pointer select-none border-r border-gray-300 pr-4 mr-2"
                 onClick={() => setUseOriginalSize(!useOriginalSize)}
@@ -198,7 +230,6 @@ export const AdminEditorPage = () => {
                 </span>
             </div>
 
-            {/* Is Master Switch */}
             <div 
                 className="flex items-center gap-2 cursor-pointer select-none"
                 onClick={() => setIsMaster(!isMaster)}
@@ -231,7 +262,7 @@ export const AdminEditorPage = () => {
         <div className="flex-1 relative z-0 bg-gray-200 overflow-hidden h-full flex flex-col">
             <EditorCanvas />
             
-            {/* Background Manager Bar (Bottom) */}
+            {/* Background Manager Bar */}
             <div className="bg-white p-2 border-t border-gray-200 flex items-center gap-4 overflow-x-auto h-32 absolute bottom-0 w-full z-30">
                 <div className="flex-none flex flex-col items-center justify-center w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg text-gray-400 hover:bg-gray-50 cursor-pointer relative">
                     <FaImage size={24} />
@@ -239,13 +270,11 @@ export const AdminEditorPage = () => {
                     <input type="file" onChange={handleAddBackground} className="absolute inset-0 opacity-0 cursor-pointer" />
                 </div>
 
-                {/* Main Background */}
                 <div className="relative group w-24 h-24 flex-none border-2 border-blue-500 rounded-lg overflow-hidden">
                     <img src={backgroundImage || "https://placehold.co/100"} className="w-full h-full object-cover" />
                     <div className="absolute bottom-0 left-0 right-0 bg-blue-600 text-white text-[10px] text-center">รูปปัจจุบัน</div>
                 </div>
 
-                {/* Extra Backgrounds List */}
                 {backgrounds.map((bg, idx) => (
                     <div key={idx} className="relative group w-24 h-24 flex-none border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition">
                         <img 

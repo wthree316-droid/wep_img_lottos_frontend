@@ -1,14 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { EditorCanvas } from '../components/editor/EditorCanvas';
 import { useEditorStore } from '../stores/useEditorStore';
-import { FaArrowLeft, FaMagic, FaDownload, FaCalendarAlt, FaPalette } from 'react-icons/fa';
-import { toPng } from 'html-to-image';
+import { FaArrowLeft, FaMagic, FaDownload, FaCalendarAlt, FaPalette, FaUserCircle } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
 import { preloadImage, waitForFonts } from '../utils/imageHelpers';
 import { apiClient } from '../config/api';
-import { IMAGE_CAPTURE_CONFIG, DATA_KEYS } from '../config/constants';
-import type { GeneratePayload, GenerateResponse, Template } from '../types';
+import { DATA_KEYS } from '../config/constants';
+import type { GeneratePayload, GenerateResponse, Template, User } from '../types';
 
 const formatDateThai = (dateStr: string) => {
   if (!dateStr) return "{วันที่}";
@@ -18,6 +17,11 @@ const formatDateThai = (dateStr: string) => {
     month: 'short',
     year: '2-digit'
   });
+};
+
+// Konva จัดการเรื่อง Scale ให้แล้ว ฟังก์ชันนี้คืนค่าเดิมกลับไปได้เลย
+const calculateScaledFontSize = (designFontSize: number) => {
+  return designFontSize; 
 };
 
 export const UserGeneratorPage = () => {
@@ -34,12 +38,14 @@ export const UserGeneratorPage = () => {
   const [isDownloading, setIsDownloading] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   
-  // ✅ New State for Multi-style
   const [templateData, setTemplateData] = useState<Template | null>(null);
   const [activeBgId, setActiveBgId] = useState<string>('default');
 
+  // ✅ Ref สำหรับจับ Stage ของ Konva เพื่อ Export รูป
+  const stageRef = useRef<any>(null);
+
   useEffect(() => {
-    if (!id) return;
+    if (!id || !user) return;
     
     const loadData = async () => {
       try {
@@ -47,24 +53,46 @@ export const UserGeneratorPage = () => {
         const lottery = data.lottery;
         let template = data.template;
 
-        // 1. ลองใช้ Template ของ User ก่อน (Override)
-        if (user?.assigned_template_id) {
-          try {
-            const userTemplate = await apiClient.get(`/api/templates/${user.assigned_template_id}`);
-            template = userTemplate;
-          } catch (e) {
-            console.error("โหลดแม่พิมพ์สมาชิกไม่เจอ", e);
-          }
+        // 1. ดึง User ล่าสุด เพื่อให้แน่ใจว่าได้แม่พิมพ์ตัวล่าสุดที่เลือกไว้
+        try {
+            const freshUser = await apiClient.get<User>(`/api/users/${user.id}`);
+            if (freshUser.assigned_template_id) {
+                try {
+                    const userTemplate = await apiClient.get(`/api/templates/${freshUser.assigned_template_id}`);
+                    template = userTemplate;
+                } catch (e) { console.error("โหลดแม่พิมพ์สมาชิกไม่เจอ", e); }
+            }
+        } catch (e) {
+             console.warn("Could not fetch fresh user data", e);
+             // fallback to context user
+             if (user.assigned_template_id) {
+                 try {
+                    const userTemplate = await apiClient.get(`/api/templates/${user.assigned_template_id}`);
+                    template = userTemplate;
+                 } catch (e) { console.error("โหลดแม่พิมพ์สมาชิกไม่เจอ", e); }
+             }
         }
 
-        // 2. ถ้าสุดท้ายยังไม่มี Template
         if (!template) {
-            alert("หวยรายการนี้ยังไม่ได้ผูกแม่พิมพ์ และคุณยังไม่ได้ตั้งค่าแม่พิมพ์ส่วนตัว");
+            alert("ไม่พบแม่พิมพ์สำหรับหวยรายการนี้");
             setLoading(false);
             return;
         }
 
-        // ✅ เก็บข้อมูล Template ตัวเต็มไว้ใช้แสดง Sidebar
+        // ✅ 2. ดึง Config ของ "เจ้าของแม่พิมพ์" (Template Owner)
+        let ownerLineId = "";
+        let ownerQrUrl = "";
+        
+        if (template.owner_id) {
+            try {
+                const owner = await apiClient.get<User>(`/api/users/${template.owner_id}`);
+                ownerLineId = owner.custom_line_id || "";
+                ownerQrUrl = owner.custom_qr_code_url || "";
+            } catch (e) {
+                console.error("Failed to load template owner config", e);
+            }
+        }
+
         setTemplateData(template);
 
         if (template.background_url) {
@@ -74,26 +102,39 @@ export const UserGeneratorPage = () => {
         setCanvasSize(template.base_width, template.base_height);
         setBackgroundImage(template.background_url);
         
+        // 3. Map Elements พร้อมแทนค่าทันที
         const loadedElements = template.template_slots.map((slot: any) => {
           let initialText = slot.label_text;
           
-          // Logic เดิม
           if (slot.data_key === DATA_KEYS.LOTTERY_NAME) {
             initialText = lottery.name;
           } else if (slot.data_key === DATA_KEYS.LOTTERY_DATE) {
             initialText = formatDateThai(selectedDate);
+          } 
+          else if (slot.data_key === DATA_KEYS.LINE_ID) {
+             initialText = ownerLineId || "{Line ID}";
           }
+          else if (slot.data_key === DATA_KEYS.QR_CODE) {
+             initialText = ownerQrUrl || ""; 
+          }
+
+          const scaledFontSize = calculateScaledFontSize(
+            slot.style_config.fontSize
+          );
 
           return {
             id: slot.id,
-            type: slot.slot_type === 'qr_code' ? 'qr_code' : (slot.slot_type === 'static_text' ? 'static_text' : 'text'), // ✅ Correct Type Mapping
+            type: slot.slot_type === 'qr_code' ? 'qr_code' : (slot.slot_type === 'static_text' ? 'static_text' : 'text'),
             label_text: initialText,
             dataKey: slot.data_key,
             pos_x: slot.pos_x,
             pos_y: slot.pos_y,
             width: slot.width,
             height: slot.height,
-            style_config: slot.style_config
+            style_config: {
+              ...slot.style_config,
+              fontSize: scaledFontSize
+            }
           };
         });
         
@@ -101,7 +142,7 @@ export const UserGeneratorPage = () => {
         setLoading(false);
       } catch (err) {
         console.error(err);
-        alert("ไม่พบข้อมูลหวยรายการนี้");
+        alert("โหลดข้อมูลผิดพลาด");
         setLoading(false);
       }
     };
@@ -122,12 +163,22 @@ export const UserGeneratorPage = () => {
       const payload: GeneratePayload = {
         template_id: templateData?.id || id!,
         user_seed: seed,
+        target_user_id: templateData?.owner_id || user?.id, 
         slot_configs: elements.map(el => {
-            // ✅ FIX: Determine slot_type correctly based on element type or dataKey
             let slotType = 'system_label';
-            if (el.type === 'qr_code' || el.dataKey === DATA_KEYS.QR_CODE) slotType = 'qr_code';
-            else if (el.type === 'static_text' || el.dataKey === DATA_KEYS.LINE_ID) slotType = 'static_text';
-            else if (el.dataKey) slotType = 'user_input';
+            
+            if (el.type === 'qr_code' || el.dataKey === DATA_KEYS.QR_CODE) {
+                slotType = 'qr_code';
+            } else if (el.type === 'static_text' || el.dataKey === DATA_KEYS.LINE_ID) {
+                slotType = 'static_text';
+            } 
+            // ✅ แก้ไขตรงนี้: ยกเว้น ชื่อหวย และ วันที่ ไม่ให้เป็น user_input
+            else if (el.dataKey === DATA_KEYS.LOTTERY_NAME || el.dataKey === DATA_KEYS.LOTTERY_DATE) {
+                slotType = 'system_label'; // ส่งเป็น system_label เพื่อให้ Backend ข้ามไป ไม่ต้องสุ่ม
+            }
+            else if (el.dataKey) {
+                slotType = 'user_input'; // อันอื่นที่เหลือค่อยสุ่ม (เช่น เลข 3 ตัว, 2 ตัว)
+            }
             
             return {
                 id: el.id,
@@ -140,9 +191,7 @@ export const UserGeneratorPage = () => {
       const data: GenerateResponse = await apiClient.post('/api/generate', payload);
       
       elements.forEach(el => {
-        // อัปเดตข้อมูลทุกอย่างที่ Backend ส่งมา (รวม QR Code / Line ID ด้วย)
         if (data.results[el.id]) {
-           // ถ้าเป็นรูปภาพ (QR Code) ให้ใช้ label_text เก็บ URL แทน
            updateElement(el.id, { label_text: data.results[el.id] });
         }
       });
@@ -154,16 +203,20 @@ export const UserGeneratorPage = () => {
     }
   };
 
+  // ✅ ฟังก์ชัน Download ใหม่ ใช้ Konva API (ชัดกว่า เร็วกว่า)
   const handleDownload = async () => {
-    const node = document.getElementById('hidden-capture-canvas-single');
-    if (!node) return;
+    if (!stageRef.current) return;
     
     setIsDownloading(true);
     try {
       await waitForFonts();
-      await new Promise(r => setTimeout(r, 500)); // รอเพิ่มนิดหน่อย
+      await new Promise(r => setTimeout(r, 500)); 
 
-      const dataUrl = await toPng(node, IMAGE_CAPTURE_CONFIG);
+      // 🚀 Export ความละเอียดสูง (Pixel Ratio 2 = Retina)
+      const dataUrl = stageRef.current.toDataURL({
+          pixelRatio: 2,
+          mimeType: 'image/png'
+      });
       
       const link = document.createElement('a');
       link.download = `lotto-${seed || 'lucky'}-${selectedDate}.png`;
@@ -177,7 +230,6 @@ export const UserGeneratorPage = () => {
     }
   };
 
-  // ✅ ฟังก์ชันเปลี่ยนพื้นหลัง
   const handleSelectBackground = (url: string, bgId: string) => {
     setActiveBgId(bgId);
     setBackgroundImage(url);
@@ -193,12 +245,16 @@ export const UserGeneratorPage = () => {
           <FaArrowLeft /> กลับหน้าหลัก
         </Link>
         <h1 className="font-bold text-xl hidden md:block">เครื่องคำนวณหวย 🎰</h1>
-        <div className="w-24"></div> 
+        <div className="flex items-center gap-2 text-sm text-gray-500">
+             <FaUserCircle /> 
+             <span className="hidden sm:inline">เล่นโดย:</span> 
+             <span className="font-bold text-blue-600">{user?.name}</span>
+        </div> 
       </div>
 
       <div className="flex-1 flex flex-col md:flex-row h-[calc(100vh-64px)] overflow-hidden relative">
         
-        {/* LEFT SIDEBAR: Controls */}
+        {/* LEFT SIDEBAR */}
         <div className="w-full md:w-80 bg-white p-6 shadow-lg z-20 flex flex-col gap-6 overflow-y-auto relative border-r border-gray-200">
           <div className="bg-orange-50 p-4 rounded-xl border border-orange-100">
              <label className="text-sm font-bold text-orange-900 mb-2 flex items-center gap-2">
@@ -248,10 +304,9 @@ export const UserGeneratorPage = () => {
           </button>
         </div>
 
-        {/* CENTER: Preview */}
+        {/* CENTER PREVIEW */}
         <div className="flex-1 bg-gray-200 relative overflow-hidden flex items-center justify-center p-4 z-0">
              <div 
-                id="lotto-ticket-preview" 
                 className="shadow-2xl bg-white"
                 style={{
                     height: '100%',
@@ -261,12 +316,13 @@ export const UserGeneratorPage = () => {
                 }}
              >
                 <div style={{ width: '100%', height: '100%' }}>
-                    <EditorCanvas readOnly={true} />
+                    {/* ✅ ส่ง onStageRef ไปจับ Stage ของ Konva */}
+                    <EditorCanvas readOnly={true} onStageRef={(ref) => (stageRef.current = ref)} />
                 </div>
              </div>
         </div>
 
-        {/* RIGHT SIDEBAR: Style Selector (เฉพาะถ้ามี Backgrounds) */}
+        {/* RIGHT SIDEBAR (Styles) */}
         {(templateData?.template_backgrounds && templateData.template_backgrounds.length > 0) && (
             <div className="w-full md:w-72 bg-white p-4 shadow-lg z-20 overflow-y-auto border-l border-gray-200">
                 <h3 className="font-bold text-gray-700 mb-4 flex items-center gap-2 sticky top-0 bg-white py-2 z-10">
@@ -276,7 +332,7 @@ export const UserGeneratorPage = () => {
                     {/* Default */}
                     <div 
                         onClick={() => handleSelectBackground(templateData.background_url, 'default')}
-                        className={`cursor-pointer rounded-lg overflow-hidden border-2 transition relative aspect-[9/16] group ${
+                        className={`cursor-pointer rounded-lg overflow-hidden border-2 transition relative aspect-9/16 group ${
                             activeBgId === 'default' ? 'border-purple-600 ring-2 ring-purple-100' : 'border-gray-100 hover:border-gray-300'
                         }`}
                     >
@@ -291,7 +347,7 @@ export const UserGeneratorPage = () => {
                         <div 
                             key={bg.id}
                             onClick={() => handleSelectBackground(bg.url, bg.id)}
-                            className={`cursor-pointer rounded-lg overflow-hidden border-2 transition relative aspect-[9/16] group ${
+                            className={`cursor-pointer rounded-lg overflow-hidden border-2 transition relative aspect-9/16 group ${
                                 activeBgId === bg.id ? 'border-purple-600 ring-2 ring-purple-100' : 'border-gray-100 hover:border-gray-300'
                             }`}
                         >
@@ -304,22 +360,6 @@ export const UserGeneratorPage = () => {
                 </div>
             </div>
         )}
-
-        {/* Hidden Canvas */}
-        <div
-            id="hidden-capture-canvas-single"
-            style={{
-                position: 'fixed',
-                top: 0,
-                left: 0, 
-                width: canvasConfig.width,
-                height: canvasConfig.height,
-                zIndex: -50,
-                pointerEvents: 'none',
-            }}
-        >
-            <EditorCanvas key={seed + selectedDate + activeBgId} readOnly={true} />
-        </div>
 
       </div>
     </div>

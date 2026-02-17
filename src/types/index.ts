@@ -32,6 +32,19 @@ export interface TemplateBackground { // ✅ เพิ่ม interface
     created_at: string;
 }
 
+export interface User {
+  id: string;
+  username: string;
+  name: string;
+  role: 'admin' | 'member';
+  assigned_template_id?: string;
+  allowed_template_ids?: string[];
+  // ✅ เพิ่มฟิลด์ใหม่
+  custom_line_id?: string;
+  custom_qr_code_url?: string;
+  created_at: string;
+}
+
 export interface Template {
   id: string;
   name: string;
@@ -40,11 +53,13 @@ export interface Template {
   base_height: number;
   background_url: string;
   is_active: boolean;
-  is_master?: boolean; // ✅ เพิ่ม
+  is_master?: boolean;
+  // ✅ เพิ่มฟิลด์ owner
+  owner_id?: string | null; 
   created_at: string;
   updated_at: string;
   template_slots?: TemplateSlot[];
-  template_backgrounds?: TemplateBackground[]; // ✅ เพิ่ม
+  template_backgrounds?: TemplateBackground[];
 }
 
 export interface Lottery {
@@ -61,19 +76,11 @@ export interface Lottery {
   };
 }
 
-export interface User {
-  id: string;
-  username: string;
-  name: string;
-  role: 'admin' | 'member';
-  assigned_template_id?: string;
-  allowed_template_ids?: string[]; // ✅ เพิ่มฟิลด์
-  created_at: string;
-}
-
 export interface GeneratePayload {
   template_id: string;
   user_seed?: string;
+  // ✅ เพิ่ม target_user_id
+  target_user_id?: string; 
   slot_configs: Array<{
     id: string;
     slot_type: 'system_label' | 'user_input' | 'auto_data' | 'qr_code' | 'static_text';
