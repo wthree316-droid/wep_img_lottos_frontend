@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react'; // ✅ เพิ่ม useState
 import { Stage, Layer, Image as KonvaImage, Text, Transformer, Rect } from 'react-konva';
 import useImage from 'use-image';
 import { useEditorStore } from '../../stores/useEditorStore';
@@ -19,6 +19,29 @@ export const EditorCanvas = ({ readOnly = false, onStageRef }: EditorCanvasProps
   
   const stageRef = useRef<any>(null);
   const trRef = useRef<any>(null);
+  
+  // ✅ เพิ่ม state สำหรับคำนวณ scale
+  const [scale, setScale] = useState(1);
+
+  // ✅ คำนวณ Scale ครั้งเดียวตอนโหลด หรือตอน Resize หน้าจอ
+  useEffect(() => {
+    if (readOnly) {
+        setScale(1); // ถ้าเป็นโหมดเจนรูป (readOnly) ไม่ต้องย่อ
+        return;
+    }
+
+    const handleResize = () => {
+        const padding = 200; // เผื่อที่ว่างบนล่าง
+        const wRatio = window.innerWidth / canvasConfig.width;
+        const hRatio = (window.innerHeight - padding) / canvasConfig.height;
+        const newScale = Math.min(wRatio, hRatio) * 0.8;
+        setScale(newScale);
+    };
+
+    handleResize(); // คำนวณทีแรก
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [readOnly, canvasConfig.width, canvasConfig.height]);
 
   // ส่ง Stage Ref กลับไปให้ Parent
   useEffect(() => {
@@ -58,7 +81,6 @@ export const EditorCanvas = ({ readOnly = false, onStageRef }: EditorCanvasProps
         : "flex-1 bg-gray-200 h-full flex items-center justify-center overflow-hidden p-8 relative" 
     }>
       <div 
-         // ✅ แก้ไข: เช็ค readOnly เพื่อซ่อนเงา (Shadow) ตอนดาวน์โหลดแน่นอน
          className={readOnly ? "" : "shadow-2xl"}
          style={{
              width: '100%', 
@@ -75,11 +97,11 @@ export const EditorCanvas = ({ readOnly = false, onStageRef }: EditorCanvasProps
             onMouseDown={checkDeselect}
             onTouchStart={checkDeselect}
             style={{ 
-                transform: readOnly ? 'none' : 'scale(0.4)', 
+                // ✅ ใช้ค่า scale จาก state แทนการใช้ <style> tag
+                transform: readOnly ? 'none' : `scale(${scale})`, 
                 transformOrigin: 'center center',
-                backgroundColor: 'white' // พื้นหลังสีขาวกันภาพโปร่งใส
+                backgroundColor: 'white'
             }}
-            className="konva-stage-container" 
           >
             <Layer>
               {/* พื้นหลัง */}
@@ -89,7 +111,7 @@ export const EditorCanvas = ({ readOnly = false, onStageRef }: EditorCanvasProps
                     x={0} y={0} 
                     width={canvasConfig.width} 
                     height={canvasConfig.height} 
-                    listening={false} // ✅ สำคัญ: ห้ามคลิกโดนพื้นหลัง
+                    listening={false}
                 />
               ) : (
                 <Rect width={canvasConfig.width} height={canvasConfig.height} fill="white" listening={false} />
@@ -135,7 +157,7 @@ export const EditorCanvas = ({ readOnly = false, onStageRef }: EditorCanvasProps
                      />
                    );
                 } else {
-                   // ✅ ส่วนของ Text Element
+                   // Text Element
                    let shadowBlur = 0, shadowColor = 'transparent', shadowOffsetX = 0, shadowOffsetY = 0;
                    if (el.style_config.textShadow) {
                        const parts = el.style_config.textShadow.split(' ');
@@ -166,14 +188,9 @@ export const EditorCanvas = ({ readOnly = false, onStageRef }: EditorCanvasProps
                         shadowBlur={shadowBlur}
                         shadowOffsetX={shadowOffsetX}
                         shadowOffsetY={shadowOffsetY}
-                        
-                        // ✅ เพิ่ม: จัดกึ่งกลางแนวตั้ง (ช่วยให้ข้อความดูไม่ลอย)
                         verticalAlign="middle"
-                        // ✅ เพิ่ม: Padding (ช่วยแก้ปัญหาตัวอักษรริมขอบขาด)
                         padding={10} 
-                        // ✅ เพิ่ม: LineHeight สำหรับภาษาไทย
                         lineHeight={1.4}
-
                         draggable={!readOnly}
                         onClick={() => !readOnly && selectElement(el.id)}
                         onTap={() => !readOnly && selectElement(el.id)}
@@ -215,14 +232,6 @@ export const EditorCanvas = ({ readOnly = false, onStageRef }: EditorCanvasProps
             </Layer>
           </Stage>
       </div>
-      
-      {!readOnly && (
-          <style>{`
-            .konva-stage-container {
-                transform: scale(${Math.min(window.innerWidth / canvasConfig.width, (window.innerHeight - 200) / canvasConfig.height) * 0.8});
-            }
-          `}</style>
-      )}
     </div>
   );
 };
