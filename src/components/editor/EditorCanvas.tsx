@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'; // ✅ เพิ่ม useState
+import { useEffect, useRef, useState } from 'react';
 import { Stage, Layer, Image as KonvaImage, Text, Transformer, Rect } from 'react-konva';
 import useImage from 'use-image';
 import { useEditorStore } from '../../stores/useEditorStore';
@@ -20,27 +20,44 @@ export const EditorCanvas = ({ readOnly = false, onStageRef }: EditorCanvasProps
   const stageRef = useRef<any>(null);
   const trRef = useRef<any>(null);
   
-  // ✅ เพิ่ม state สำหรับคำนวณ scale
+  // ✅ เพิ่ม Ref สำหรับดึงขนาดกล่อง Container ด้านนอก
+  const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
 
-  // ✅ คำนวณ Scale ครั้งเดียวตอนโหลด หรือตอน Resize หน้าจอ
+  // ✅ คำนวณ Scale ให้ภาพพอดีหน้าจอ 100% เสมอ
   useEffect(() => {
-    if (readOnly) {
-        setScale(1); // ถ้าเป็นโหมดเจนรูป (readOnly) ไม่ต้องย่อ
-        return;
-    }
-
     const handleResize = () => {
-        const padding = 200; // เผื่อที่ว่างบนล่าง
-        const wRatio = window.innerWidth / canvasConfig.width;
-        const hRatio = (window.innerHeight - padding) / canvasConfig.height;
-        const newScale = Math.min(wRatio, hRatio) * 0.8;
-        setScale(newScale);
+        if (readOnly) {
+            // โหมดแสดงผล (หน้าเล่นหวย) -> ให้ขนาดพอดีกับกรอบที่ครอบมันอยู่
+            if (containerRef.current) {
+                const { clientWidth, clientHeight } = containerRef.current;
+                if (clientWidth > 0 && clientHeight > 0) {
+                    const scaleX = clientWidth / canvasConfig.width;
+                    const scaleY = clientHeight / canvasConfig.height;
+                    setScale(Math.min(scaleX, scaleY));
+                } else {
+                    setScale(1);
+                }
+            }
+        } else {
+            // โหมดแก้ไข (หน้าแอดมิน) -> คำนวณเผื่อเครื่องมือด้านข้าง
+            const padding = window.innerWidth < 768 ? 80 : 200; // ในมือถือลด Padding ลง
+            const wRatio = window.innerWidth / canvasConfig.width;
+            const hRatio = (window.innerHeight - padding) / canvasConfig.height;
+            setScale(Math.min(wRatio, hRatio) * (window.innerWidth < 768 ? 0.9 : 0.8));
+        }
     };
 
-    handleResize(); // คำนวณทีแรก
+    handleResize(); // คำนวณครั้งแรก
+    
+    // ตั้งเวลาเผื่อ DOM โหลดเสร็จช้าในเสี้ยววินาที
+    const timer = setTimeout(handleResize, 100);
+
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    return () => {
+        window.removeEventListener('resize', handleResize);
+        clearTimeout(timer);
+    };
   }, [readOnly, canvasConfig.width, canvasConfig.height]);
 
   // ส่ง Stage Ref กลับไปให้ Parent
@@ -50,7 +67,7 @@ export const EditorCanvas = ({ readOnly = false, onStageRef }: EditorCanvasProps
     }
   }, [stageRef.current, onStageRef]);
 
-  // จัดการ Transformer
+  // จัดการ Transformer (กรอบย่อ/ขยายข้อความ)
   useEffect(() => {
     if (readOnly || !trRef.current || !stageRef.current) return;
 
@@ -76,10 +93,13 @@ export const EditorCanvas = ({ readOnly = false, onStageRef }: EditorCanvasProps
   };
 
   return (
-    <div className={readOnly 
-        ? "w-full h-full relative overflow-hidden" 
-        : "flex-1 bg-gray-200 h-full flex items-center justify-center overflow-hidden p-8 relative" 
-    }>
+    <div 
+        ref={containerRef} // ✅ ผูก Ref ไว้ตรงนี้เพื่อดึงขนาดหน้าจอ
+        className={readOnly 
+            ? "w-full h-full relative overflow-hidden flex items-center justify-center" // ✅ เพิ่ม flex center 
+            : "flex-1 bg-gray-200 h-full flex items-center justify-center overflow-hidden p-8 relative" 
+        }
+    >
       <div 
          className={readOnly ? "" : "shadow-2xl"}
          style={{
@@ -97,8 +117,8 @@ export const EditorCanvas = ({ readOnly = false, onStageRef }: EditorCanvasProps
             onMouseDown={checkDeselect}
             onTouchStart={checkDeselect}
             style={{ 
-                // ✅ ใช้ค่า scale จาก state แทนการใช้ <style> tag
-                transform: readOnly ? 'none' : `scale(${scale})`, 
+                // ✅ บังคับใช้งาน Scale ตลอดเวลา ไม่โดนตัดขอบแน่นอน
+                transform: `scale(${scale})`, 
                 transformOrigin: 'center center',
                 backgroundColor: 'white'
             }}
@@ -158,6 +178,17 @@ export const EditorCanvas = ({ readOnly = false, onStageRef }: EditorCanvasProps
                    );
                 } else {
                    // Text Element
+                   const currentColors = el.style_config.gradientColors || [el.style_config.color];
+                   const isGradient = currentColors.length > 1;
+                   
+                   let colorStops: (string | number)[] = [];
+                   if (isGradient) {
+                       currentColors.forEach((color, index) => {
+                           const position = index / (currentColors.length - 1);
+                           colorStops.push(position, color);
+                       });
+                   }
+
                    let shadowBlur = 0, shadowColor = 'transparent', shadowOffsetX = 0, shadowOffsetY = 0;
                    if (el.style_config.textShadow) {
                        const parts = el.style_config.textShadow.split(' ');
@@ -167,18 +198,6 @@ export const EditorCanvas = ({ readOnly = false, onStageRef }: EditorCanvasProps
                            shadowBlur = parseInt(parts[2]);
                            shadowColor = parts[3];
                        }
-                   }
-                   // ✅ สร้างชุดสีไล่ระดับจาก Array
-                   const currentColors = el.style_config.gradientColors || [el.style_config.color];
-                   const isGradient = currentColors.length > 1; // ถ้ามีสีมากกว่า 1 แปลว่าเป็น Gradient
-                   
-                   // คำนวณจุดหยุดสี (Color Stops) ให้กระจายเท่าๆ กันจากบนลงล่าง
-                   let colorStops: (string | number)[] = [];
-                   if (isGradient) {
-                       currentColors.forEach((color, index) => {
-                           const position = index / (currentColors.length - 1); // 0 ถึง 1
-                           colorStops.push(position, color);
-                       });
                    }
 
                    return (
@@ -192,11 +211,10 @@ export const EditorCanvas = ({ readOnly = false, onStageRef }: EditorCanvasProps
                         fontSize={el.style_config.fontSize}
                         fontFamily={el.style_config.fontFamily}
                         
-                        // ✅ ถ้ามีสีเดียวก็ใช้ fill ธรรมดา ถ้าไล่สีให้ใช้ gradient
                         fill={isGradient ? undefined : currentColors[0]}
                         fillPriority={isGradient ? 'linear-gradient' : 'color'}
                         fillLinearGradientStartPoint={{ x: 0, y: 0 }}
-                        fillLinearGradientEndPoint={{ x: 0, y: h }} // ไล่สีจากบนลงล่าง
+                        fillLinearGradientEndPoint={{ x: 0, y: h }}
                         fillLinearGradientColorStops={colorStops}
                         
                         align={el.style_config.textAlign}

@@ -4,14 +4,13 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   FaPlus, FaEdit, FaTrash, FaUsers, FaArrowLeft, 
-  FaTicketAlt, FaUserCog 
+  FaTicketAlt, FaUserCog, FaTimes
 } from 'react-icons/fa';
 import { LogoutButton } from '../components/LogoutButton';
 import { apiClient } from '../config/api';
 import type { User, Lottery } from '../types';
 
 export const DashboardAdminPage = () => {
-  // ✅ 1. ตั้ง Default เป็น 'users' เพราะเป็นหัวใจหลักของระบบใหม่
   const [activeTab, setActiveTab] = useState<'users' | 'lotteries'>('users');
   const [users, setUsers] = useState<User[]>([]);
   const [lotteries, setLotteries] = useState<Lottery[]>([]);
@@ -33,7 +32,6 @@ export const DashboardAdminPage = () => {
   });
 
   useEffect(() => {
-    // ✅ 2. ไม่ต้องโหลด Templates หรือ GlobalConfigs แล้ว
     Promise.all([fetchUsers(), fetchLotteries()])
       .then(() => setLoading(false))
       .catch((err: any) => {
@@ -56,7 +54,7 @@ export const DashboardAdminPage = () => {
   };
 
   const handleDeleteUser = async (id: string) => {
-    if (!confirm("ยืนยันการลบสมาชิกคนนี้? (แม่พิมพ์ของเขาจะหายไปด้วย)")) return;
+    if (!confirm("⚠️ ยืนยันการลบสมาชิกคนนี้?\nแม่พิมพ์ส่วนตัวของเขาจะถูกลบไปด้วยและกู้คืนไม่ได้")) return;
     try {
       await apiClient.delete(`/api/users/${id}`);
       setUsers(users.filter(u => u.id !== id));
@@ -66,7 +64,7 @@ export const DashboardAdminPage = () => {
   };
 
   const handleDeleteLottery = async (id: string) => {
-    if (!confirm("ยืนยันการลบหวยรายการนี้?")) return;
+    if (!confirm("⚠️ ยืนยันการลบหวยรายการนี้?")) return;
     try {
       await apiClient.delete(`/api/lotteries/${id}`);
       setLotteries(lotteries.filter(l => l.id !== id));
@@ -159,87 +157,127 @@ export const DashboardAdminPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <div className="bg-white shadow-sm border-b border-gray-200 px-8 py-4 flex justify-between items-center">
-        <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-          ⚙️ ระบบจัดการหลังบ้าน (Admin)
-        </h1>
-        <Link to="/" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
-           <FaArrowLeft /> กลับไปหน้าเลือกหวย (User)
-        </Link>
-        <div className="h-6 w-px bg-gray-300"></div> 
-          <LogoutButton /> 
+    <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
+      
+      {/* 🌟 Header (Sticky & Glassmorphism) */}
+      <div className="bg-white/90 backdrop-blur-md shadow-sm border-b border-gray-200 px-4 md:px-8 py-3 md:py-4 flex justify-between items-center sticky top-0 z-30">
+        <div className="flex items-center gap-3 md:gap-4">
+            <Link to="/" className="text-gray-500 hover:text-blue-600 bg-gray-100 p-2 md:px-3 rounded-lg flex items-center gap-2 font-bold transition">
+                <FaArrowLeft /> <span className="hidden sm:inline">หน้าผู้ใช้</span>
+            </Link>
+            <div className="h-6 w-px bg-gray-300 hidden sm:block"></div> 
+            <h1 className="text-lg md:text-xl font-bold text-gray-800 flex items-center gap-2 truncate">
+                ⚙️ จัดการหลังบ้าน
+            </h1>
         </div>
+        <LogoutButton /> 
+      </div>
 
-      <div className="flex-1 max-w-7xl w-full mx-auto p-8">
+      <div className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-8">
         
-        {/* ✅ 3. เหลือแค่ 2 Tabs */}
-        <div className="flex gap-4 mb-6 border-b border-gray-200 overflow-x-auto">
+        {/* 🌟 Modern Tabs */}
+        <div className="flex gap-2 md:gap-4 mb-6 md:mb-8 overflow-x-auto pb-2 hide-scrollbar">
           <button
             onClick={() => setActiveTab('users')}
-            className={`pb-3 px-4 flex items-center gap-2 font-medium transition border-b-2 whitespace-nowrap ${
-              activeTab === 'users' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+            className={`px-4 md:px-6 py-2.5 rounded-full flex items-center gap-2 font-bold transition-all whitespace-nowrap shadow-sm ${
+              activeTab === 'users' ? 'bg-blue-600 text-white shadow-blue-500/30' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
             }`}
           >
-            <FaUsers /> จัดการสมาชิก ({users.length})
+            <FaUsers /> สมาชิก <span className={`text-xs px-2 py-0.5 rounded-full ${activeTab === 'users' ? 'bg-white/20' : 'bg-gray-200'}`}>{users.length}</span>
           </button>
           <button
             onClick={() => setActiveTab('lotteries')}
-            className={`pb-3 px-4 flex items-center gap-2 font-medium transition border-b-2 whitespace-nowrap ${
-              activeTab === 'lotteries' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+            className={`px-4 md:px-6 py-2.5 rounded-full flex items-center gap-2 font-bold transition-all whitespace-nowrap shadow-sm ${
+              activeTab === 'lotteries' ? 'bg-blue-600 text-white shadow-blue-500/30' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
             }`}
           >
-            <FaTicketAlt /> จัดการหวย ({lotteries.length})
+            <FaTicketAlt /> รายการหวย <span className={`text-xs px-2 py-0.5 rounded-full ${activeTab === 'lotteries' ? 'bg-white/20' : 'bg-gray-200'}`}>{lotteries.length}</span>
           </button>
         </div>
 
         {loading ? (
-            <div className="text-center py-20 text-gray-400">กำลังโหลดข้อมูล... ⏳</div>
+            <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+                <div className="animate-spin text-4xl mb-4 text-blue-500">⏳</div>
+                <div className="font-bold">กำลังโหลดข้อมูล...</div>
+            </div>
         ) : (
-          <>
+          <div className="animate-fade-in">
+            {/* ======================================= */}
+            {/* TAB 1: USERS (จัดการสมาชิก) */}
+            {/* ======================================= */}
             {activeTab === 'users' && (
               <div>
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-lg font-semibold text-gray-700">รายชื่อสมาชิกทั้งหมด</h2>
-                  <button onClick={openCreateModal} className="bg-green-600 text-white px-4 py-2 rounded-lg shadow hover:bg-green-700 flex items-center gap-2">
-                    <FaPlus /> เพิ่มสมาชิกใหม่
+                <div className="flex justify-between items-center mb-4 md:mb-6">
+                  <h2 className="text-lg md:text-xl font-bold text-gray-800">รายชื่อสมาชิก</h2>
+                  <button onClick={openCreateModal} className="bg-green-600 text-white px-4 md:px-5 py-2.5 rounded-xl shadow-[0_4px_15px_rgba(34,197,94,0.3)] hover:bg-green-700 flex items-center gap-2 font-bold transition transform active:scale-95">
+                    <FaPlus /> <span className="hidden sm:inline">เพิ่มสมาชิกใหม่</span>
                   </button>
                 </div>
 
-                <div className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
+                {/* 📱 Mobile View: Cards */}
+                <div className="md:hidden space-y-4">
+                    {users.map(u => (
+                        <div key={u.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col gap-3 relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-16 h-16 bg-linear-to-br from-transparent to-gray-50 -z-10 rounded-bl-full opacity-50"></div>
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
+                                        {u.username}
+                                    </h3>
+                                    <p className="text-sm text-gray-500">{u.name}</p>
+                                </div>
+                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${u.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'}`}>
+                                    {u.role}
+                                </span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 mt-2">
+                                <Link 
+                                    to={`/admin/user/${u.id}`}
+                                    className="col-span-2 bg-purple-50 text-purple-600 py-2 rounded-lg flex items-center justify-center gap-2 font-bold text-sm hover:bg-purple-100 transition"
+                                >
+                                    <FaUserCog /> เข้าพื้นที่ส่วนตัว
+                                </Link>
+                                <button onClick={() => openEditModal(u)} className="bg-blue-50 text-blue-600 py-2 rounded-lg flex items-center justify-center gap-2 font-bold text-sm hover:bg-blue-100">
+                                    <FaEdit /> แก้ไข
+                                </button>
+                                <button onClick={() => handleDeleteUser(u.id)} className="bg-red-50 text-red-500 py-2 rounded-lg flex items-center justify-center gap-2 font-bold text-sm hover:bg-red-100">
+                                    <FaTrash /> ลบ
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* 💻 Desktop View: Table */}
+                <div className="hidden md:block bg-white shadow-sm rounded-xl border border-gray-200 overflow-hidden">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ชื่อเล่น</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">บทบาท</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">จัดการ</th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Username</th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">ชื่อเล่น</th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">บทบาท</th>
+                        <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">จัดการ</th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="bg-white divide-y divide-gray-100">
                       {users.map((u) => (
-                          <tr key={u.id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
-                              {u.username} 
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{u.name}</td>
+                          <tr key={u.id} className="hover:bg-blue-50/50 transition">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">{u.username}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{u.name}</td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                {u.role === 'admin' 
-                                    ? <span className="bg-purple-100 text-purple-600 px-2 py-1 rounded-full text-xs font-bold">Admin</span> 
-                                    : <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs">Member</span>
-                                }
+                                <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${u.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'}`}>
+                                    {u.role}
+                                </span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                              {/* ✅ ปุ่มเข้า Workspace ส่วนตัว */}
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex justify-end gap-2 items-center">
                               <Link 
                                 to={`/admin/user/${u.id}`}
-                                className="inline-flex items-center gap-1 bg-purple-50 text-purple-600 px-3 py-1.5 rounded-lg hover:bg-purple-100 mr-2 transition font-bold text-xs"
+                                className="inline-flex items-center gap-1.5 bg-purple-50 text-purple-600 px-3 py-2 rounded-lg hover:bg-purple-100 transition font-bold text-xs"
                               >
                                 <FaUserCog /> เข้าพื้นที่ส่วนตัว
                               </Link>
-
-                              <button onClick={() => openEditModal(u)} className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 p-2 rounded-lg mr-2"><FaEdit /></button>
-                              <button onClick={() => handleDeleteUser(u.id)} className="text-red-600 hover:text-red-900 bg-red-50 p-2 rounded-lg"><FaTrash /></button>
+                              <button onClick={() => openEditModal(u)} className="text-blue-600 bg-blue-50 p-2.5 rounded-lg hover:bg-blue-100 transition" title="แก้ไข"><FaEdit /></button>
+                              <button onClick={() => handleDeleteUser(u.id)} className="text-red-500 bg-red-50 p-2.5 rounded-lg hover:bg-red-100 transition" title="ลบ"><FaTrash /></button>
                             </td>
                           </tr>
                         ))}
@@ -249,40 +287,69 @@ export const DashboardAdminPage = () => {
               </div>
             )}
 
+            {/* ======================================= */}
+            {/* TAB 2: LOTTERIES (จัดการหวย) */}
+            {/* ======================================= */}
             {activeTab === 'lotteries' && (
                 <div>
-                    <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-lg font-semibold text-gray-700">จัดการหวยทั้งหมด ({lotteries.length})</h2>
-                        <button onClick={openCreateLotteryModal} className="bg-green-600 text-white px-4 py-2 rounded-lg shadow hover:bg-green-700 flex items-center gap-2">
-                            <FaPlus /> เพิ่มหวยใหม่
+                    <div className="flex justify-between items-center mb-4 md:mb-6">
+                        <h2 className="text-lg md:text-xl font-bold text-gray-800">รายการหวยทั้งหมด</h2>
+                        <button onClick={openCreateLotteryModal} className="bg-green-600 text-white px-4 md:px-5 py-2.5 rounded-xl shadow-[0_4px_15px_rgba(34,197,94,0.3)] hover:bg-green-700 flex items-center gap-2 font-bold transition transform active:scale-95">
+                            <FaPlus /> <span className="hidden sm:inline">เพิ่มหวยใหม่</span>
                         </button>
                     </div>
 
-                    <div className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
+                    {/* 📱 Mobile View: Cards */}
+                    <div className="md:hidden space-y-4">
+                        {lotteries.map((lotto) => (
+                            <div key={lotto.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col gap-3">
+                                <div className="flex justify-between items-start">
+                                    <h3 className="font-bold text-gray-900 text-base">{lotto.name}</h3>
+                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${lotto.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                        {lotto.is_active ? 'เปิดรับ' : 'ปิดรับ'}
+                                    </span>
+                                </div>
+                                <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded-md">
+                                    ⏰ ปิดรับ: {lotto.closing_time ? new Date(lotto.closing_time).toLocaleString('th-TH', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' }) : 'ไม่กำหนด'}
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 mt-2">
+                                    <button onClick={() => openEditLotteryModal(lotto)} className="bg-blue-50 text-blue-600 py-2 rounded-lg flex items-center justify-center gap-2 font-bold text-sm hover:bg-blue-100">
+                                        <FaEdit /> แก้ไข
+                                    </button>
+                                    <button onClick={() => handleDeleteLottery(lotto.id)} className="bg-red-50 text-red-500 py-2 rounded-lg flex items-center justify-center gap-2 font-bold text-sm hover:bg-red-100">
+                                        <FaTrash /> ลบ
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* 💻 Desktop View: Table */}
+                    <div className="hidden md:block bg-white shadow-sm rounded-xl border border-gray-200 overflow-hidden">
                         <table className="min-w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
                                 <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ชื่อหวย</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">เวลาปิดรับ</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">สถานะ</th>
-                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">จัดการ</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">ชื่อหวย</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">เวลาปิดรับ</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">สถานะ</th>
+                                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">จัดการ</th>
                                 </tr>
                             </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
+                            <tbody className="bg-white divide-y divide-gray-100">
                                 {lotteries.map((lotto) => (
-                                    <tr key={lotto.id} className="hover:bg-gray-50">
+                                    <tr key={lotto.id} className="hover:bg-blue-50/50 transition">
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">{lotto.name}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                             {lotto.closing_time ? new Date(lotto.closing_time).toLocaleString('th-TH', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' }) : '-'}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${lotto.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                                {lotto.is_active ? 'เปิดใช้งาน' : 'ปิด'}
+                                            <span className={`px-3 py-1 inline-flex text-xs font-bold rounded-full ${lotto.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                {lotto.is_active ? 'เปิดรับ' : 'ปิดรับ'}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            <button onClick={() => openEditLotteryModal(lotto)} className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 p-2 rounded-lg mr-2"><FaEdit /></button>
-                                            <button onClick={() => handleDeleteLottery(lotto.id)} className="text-red-600 hover:text-red-900 bg-red-50 p-2 rounded-lg"><FaTrash /></button>
+                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex justify-end gap-2">
+                                            <button onClick={() => openEditLotteryModal(lotto)} className="text-blue-600 bg-blue-50 p-2.5 rounded-lg hover:bg-blue-100 transition"><FaEdit /></button>
+                                            <button onClick={() => handleDeleteLottery(lotto.id)} className="text-red-500 bg-red-50 p-2.5 rounded-lg hover:bg-red-100 transition"><FaTrash /></button>
                                         </td>
                                     </tr>
                                 ))}
@@ -291,48 +358,86 @@ export const DashboardAdminPage = () => {
                     </div>
                 </div>
             )}
-          </>
+          </div>
         )}
       </div>
 
+      {/* ======================================= */}
+      {/* 🌟 MODALS (เพิ่ม/แก้ไข สมาชิก) */}
+      {/* ======================================= */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
-            <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-              {editingUser ? <FaEdit /> : <FaPlus />} {editingUser ? 'แก้ไขข้อมูลสมาชิก' : 'เพิ่มสมาชิกใหม่'}
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 md:p-8 animate-fade-in relative">
+            <button onClick={() => setIsModalOpen(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-2 bg-gray-50 rounded-full">
+                <FaTimes />
+            </button>
+            <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+              <div className="bg-blue-100 text-blue-600 p-2 rounded-lg">{editingUser ? <FaEdit /> : <FaPlus />}</div>
+              {editingUser ? 'แก้ไขข้อมูลสมาชิก' : 'เพิ่มสมาชิกใหม่'}
             </h3>
+            
             <form onSubmit={handleSaveUser} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Username</label>
-                <input type="text" required disabled={!!editingUser} value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md bg-gray-50 disabled:text-gray-400" />
+                <label className="block text-sm font-bold text-gray-700 mb-1">Username (ใช้ล็อกอิน)</label>
+                <input type="text" required disabled={!!editingUser} value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none disabled:bg-gray-100 disabled:text-gray-400" />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700">ชื่อเล่น (Display Name)</label>
-                <input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" />
+                <label className="block text-sm font-bold text-gray-700 mb-1">ชื่อเรียก (แสดงในระบบ)</label>
+                <input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700">รหัสผ่าน {editingUser && <span className="text-xs text-gray-400 font-normal">(เว้นว่างถ้าไม่เปลี่ยน)</span>}</label>
-                <input type="password" required={!editingUser} value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" />
+                <label className="block text-sm font-bold text-gray-700 mb-1">รหัสผ่าน {editingUser && <span className="text-xs text-blue-500 font-normal ml-1 bg-blue-50 px-2 py-0.5 rounded-full">เว้นว่างถ้าไม่เปลี่ยน</span>}</label>
+                <input type="password" required={!editingUser} value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none placeholder:text-gray-300" placeholder="••••••••" />
               </div>
-              <div className="flex gap-3 pt-4 border-t border-gray-100 mt-4">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">ยกเลิก</button>
-                <button type="submit" className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold">บันทึก</button>
+              <div className="flex gap-3 pt-6 mt-4">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-3 text-gray-600 font-bold bg-gray-100 rounded-xl hover:bg-gray-200 transition">ยกเลิก</button>
+                <button type="submit" className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 shadow-[0_4px_15px_rgba(37,99,235,0.3)] transition transform active:scale-95">บันทึก</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
+      {/* ======================================= */}
+      {/* 🌟 MODALS (เพิ่ม/แก้ไข หวย) */}
+      {/* ======================================= */}
       {isLotteryModalOpen && (
-         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-           {/* (Lottery Form เหมือนเดิม) */}
-           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
-             <h3 className="text-xl font-bold text-gray-800 mb-4">จัดการหวย</h3>
+         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 md:p-8 animate-fade-in relative">
+             <button onClick={() => setIsLotteryModalOpen(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-2 bg-gray-50 rounded-full">
+                <FaTimes />
+             </button>
+             <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                <div className="bg-green-100 text-green-600 p-2 rounded-lg"><FaTicketAlt /></div>
+                จัดการรายการหวย
+             </h3>
              <form onSubmit={handleSaveLottery} className="space-y-4">
-                <input type="text" placeholder="ชื่อหวย" value={lotteryFormData.name} onChange={e => setLotteryFormData({...lotteryFormData, name: e.target.value})} className="w-full p-2 border rounded" required />
-                <input type="datetime-local" value={lotteryFormData.closing_time} onChange={e => setLotteryFormData({...lotteryFormData, closing_time: e.target.value})} className="w-full p-2 border rounded" />
-                <div className="flex gap-2"><input type="checkbox" checked={lotteryFormData.is_active} onChange={e => setLotteryFormData({...lotteryFormData, is_active: e.target.checked})} /> เปิดใช้งาน</div>
-                <div className="flex gap-2"><button type="button" onClick={() => setIsLotteryModalOpen(false)} className="flex-1 p-2 border rounded">ยกเลิก</button><button type="submit" className="flex-1 p-2 bg-blue-600 text-white rounded">บันทึก</button></div>
+                <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">ชื่อหวย (เช่น ฮานอยพิเศษ)</label>
+                    <input type="text" value={lotteryFormData.name} onChange={e => setLotteryFormData({...lotteryFormData, name: e.target.value})} className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 outline-none" required />
+                </div>
+                <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">เวลาปิดรับ (ถ้ามี)</label>
+                    <input type="datetime-local" value={lotteryFormData.closing_time} onChange={e => setLotteryFormData({...lotteryFormData, closing_time: e.target.value})} className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 outline-none cursor-pointer" />
+                </div>
+                
+                <div className="pt-2">
+                    <label className="flex items-center gap-3 cursor-pointer bg-gray-50 p-4 rounded-xl border border-gray-200 hover:bg-green-50 hover:border-green-200 transition">
+                        <div className="relative">
+                            <input type="checkbox" checked={lotteryFormData.is_active} onChange={e => setLotteryFormData({...lotteryFormData, is_active: e.target.checked})} className="sr-only" />
+                            <div className={`block w-14 h-8 rounded-full transition-colors ${lotteryFormData.is_active ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                            <div className={`dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform ${lotteryFormData.is_active ? 'transform translate-x-6' : ''}`}></div>
+                        </div>
+                        <div className="font-bold text-gray-700 text-sm">
+                            เปิดใช้งานให้เล่นได้ (Active)
+                        </div>
+                    </label>
+                </div>
+
+                <div className="flex gap-3 pt-6 mt-4">
+                    <button type="button" onClick={() => setIsLotteryModalOpen(false)} className="flex-1 py-3 text-gray-600 font-bold bg-gray-100 rounded-xl hover:bg-gray-200 transition">ยกเลิก</button>
+                    <button type="submit" className="flex-1 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 shadow-[0_4px_15px_rgba(34,197,94,0.3)] transition transform active:scale-95">บันทึกข้อมูล</button>
+                </div>
              </form>
            </div>
          </div>

@@ -2,7 +2,10 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { EditorCanvas } from '../components/editor/EditorCanvas';
 import { useEditorStore } from '../stores/useEditorStore';
-import { FaArrowLeft, FaMagic, FaDownload, FaCalendarAlt, FaPalette, FaUserCircle } from 'react-icons/fa';
+import { 
+    FaArrowLeft, FaMagic, FaDownload, FaCalendarAlt, 
+    FaPalette, FaUserCircle, FaCheck 
+} from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
 import { preloadImage, waitForFonts } from '../utils/imageHelpers';
 import { apiClient } from '../config/api';
@@ -41,7 +44,6 @@ export const UserGeneratorPage = () => {
   const [templateData, setTemplateData] = useState<Template | null>(null);
   const [activeBgId, setActiveBgId] = useState<string>('default');
 
-  // ✅ Ref สำหรับจับ Stage ของ Konva เพื่อ Export รูป
   const stageRef = useRef<any>(null);
 
   useEffect(() => {
@@ -53,7 +55,6 @@ export const UserGeneratorPage = () => {
         const lottery = data.lottery;
         let template = data.template;
 
-        // 1. ดึง User ล่าสุด เพื่อให้แน่ใจว่าได้แม่พิมพ์ตัวล่าสุดที่เลือกไว้
         try {
             const freshUser = await apiClient.get<User>(`/api/users/${user.id}`);
             if (freshUser.assigned_template_id) {
@@ -64,7 +65,6 @@ export const UserGeneratorPage = () => {
             }
         } catch (e) {
              console.warn("Could not fetch fresh user data", e);
-             // fallback to context user
              if (user.assigned_template_id) {
                  try {
                     const userTemplate = await apiClient.get(`/api/templates/${user.assigned_template_id}`);
@@ -79,7 +79,6 @@ export const UserGeneratorPage = () => {
             return;
         }
 
-        // ✅ 2. ดึง Config ของ "เจ้าของแม่พิมพ์" (Template Owner)
         let ownerLineId = "";
         let ownerQrUrl = "";
         
@@ -102,7 +101,6 @@ export const UserGeneratorPage = () => {
         setCanvasSize(template.base_width, template.base_height);
         setBackgroundImage(template.background_url);
         
-        // 3. Map Elements พร้อมแทนค่าทันที
         const loadedElements = template.template_slots.map((slot: any) => {
           let initialText = slot.label_text;
           
@@ -118,9 +116,7 @@ export const UserGeneratorPage = () => {
              initialText = ownerQrUrl || ""; 
           }
 
-          const scaledFontSize = calculateScaledFontSize(
-            slot.style_config.fontSize
-          );
+          const scaledFontSize = calculateScaledFontSize(slot.style_config.fontSize);
 
           return {
             id: slot.id,
@@ -172,12 +168,11 @@ export const UserGeneratorPage = () => {
             } else if (el.type === 'static_text' || el.dataKey === DATA_KEYS.LINE_ID) {
                 slotType = 'static_text';
             } 
-            // ✅ แก้ไขตรงนี้: ยกเว้น ชื่อหวย และ วันที่ ไม่ให้เป็น user_input
             else if (el.dataKey === DATA_KEYS.LOTTERY_NAME || el.dataKey === DATA_KEYS.LOTTERY_DATE) {
-                slotType = 'system_label'; // ส่งเป็น system_label เพื่อให้ Backend ข้ามไป ไม่ต้องสุ่ม
+                slotType = 'system_label'; 
             }
             else if (el.dataKey) {
-                slotType = 'user_input'; // อันอื่นที่เหลือค่อยสุ่ม (เช่น เลข 3 ตัว, 2 ตัว)
+                slotType = 'user_input'; 
             }
             
             return {
@@ -203,7 +198,6 @@ export const UserGeneratorPage = () => {
     }
   };
 
-  // ✅ ฟังก์ชัน Download ใหม่ ใช้ Konva API (ชัดกว่า เร็วกว่า)
   const handleDownload = async () => {
     if (!stageRef.current) return;
     
@@ -212,7 +206,6 @@ export const UserGeneratorPage = () => {
       await waitForFonts();
       await new Promise(r => setTimeout(r, 500)); 
 
-      // 🚀 Export ความละเอียดสูง (Pixel Ratio 2 = Retina)
       const dataUrl = stageRef.current.toDataURL({
           pixelRatio: 2,
           mimeType: 'image/png'
@@ -235,131 +228,190 @@ export const UserGeneratorPage = () => {
     setBackgroundImage(url);
   };
 
-  if (loading) return <div className="text-center p-20">กำลังโหลดแม่พิมพ์...</div>;
+  if (loading) return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center">
+          <div className="animate-spin text-4xl mb-4 text-blue-500">⏳</div>
+          <div className="text-gray-500 font-bold">กำลังโหลดแม่พิมพ์...</div>
+      </div>
+  );
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
+    <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
+      
       {/* Header */}
-      <div className="bg-white p-4 shadow-sm flex items-center justify-between px-8 z-30 relative">
-        <Link to="/" className="flex items-center gap-2 text-gray-500 hover:text-blue-600">
-          <FaArrowLeft /> กลับหน้าหลัก
+      <div className="bg-white h-16 shadow-sm flex items-center justify-between px-4 md:px-8 z-30 relative shrink-0">
+        <Link to="/" className="flex items-center gap-2 text-gray-500 hover:text-blue-600 font-bold transition p-2 rounded-lg hover:bg-gray-50">
+          <FaArrowLeft /> <span className="hidden sm:inline">กลับหน้าหลัก</span>
         </Link>
-        <h1 className="font-bold text-xl hidden md:block">เครื่องคำนวณหวย 🎰</h1>
-        <div className="flex items-center gap-2 text-sm text-gray-500">
-             <FaUserCircle /> 
-             <span className="hidden sm:inline">เล่นโดย:</span> 
-             <span className="font-bold text-blue-600">{user?.name}</span>
-        </div> 
+        <h1 className="font-bold text-lg md:text-xl text-gray-800 flex items-center gap-2">
+           เครื่องคำนวณหวย 🎰
+        </h1>
+        <div className="flex items-center gap-2 text-xs md:text-sm text-gray-500 bg-gray-100 px-3 py-1.5 rounded-full border border-gray-200">
+             <FaUserCircle className="text-gray-400 text-lg" />
+             <span className="hidden sm:inline">เล่นโดย:</span>
+             <span className="font-bold text-blue-600 truncate max-w-20 sm:max-w-37.5">{user?.name}</span>
+        </div>
       </div>
 
-      <div className="flex-1 flex flex-col md:flex-row h-[calc(100vh-64px)] overflow-hidden relative">
-        
-        {/* LEFT SIDEBAR */}
-        <div className="w-full md:w-80 bg-white p-6 shadow-lg z-20 flex flex-col gap-6 overflow-y-auto relative border-r border-gray-200">
-          <div className="bg-orange-50 p-4 rounded-xl border border-orange-100">
-             <label className="text-sm font-bold text-orange-900 mb-2 flex items-center gap-2">
-               <FaCalendarAlt /> เลือกงวดวันที่
-             </label>
-             <input 
-               type="date"
-               value={selectedDate}
-               onChange={(e) => setSelectedDate(e.target.value)}
-               className="w-full p-2 border border-orange-200 rounded-lg text-gray-700 outline-none focus:ring-2 focus:ring-orange-400 cursor-pointer"
-             />
-          </div>
+      {/* Main Workspace 
+        - Mobile: flex-col, scrolls naturally as a page
+        - Desktop: flex-row, sidebars scroll independently, canvas is fixed
+      */}
+      <div className="flex-1 flex flex-col md:flex-row relative md:h-[calc(100vh-64px)] overflow-y-auto md:overflow-hidden bg-gray-50">
 
-          <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
-            <label className="block text-sm font-bold text-blue-900 mb-2">
-              เลขตั้งต้น (Seed)
-            </label>
-            <input 
-              type="text" 
-              value={seed}
-              onChange={(e) => setSeed(e.target.value)}
-              placeholder="เช่น รางวัลที่ 1..."
-              className="w-full p-3 border border-blue-300 rounded-lg text-lg text-center font-mono tracking-widest focus:ring-2 focus:ring-blue-500 outline-none"
-            />
-          </div>
-
-          <button 
-            onClick={handleGenerate}
-            disabled={isGenerating}
-            className={`w-full py-4 rounded-xl font-bold text-white text-lg shadow-lg flex items-center justify-center gap-2 transition ${
-              isGenerating ? 'bg-gray-400' : 'bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 transform hover:scale-105'
-            }`}
-          >
-            {isGenerating ? 'กำลังคำนวณ...' : <><FaMagic /> คำนวณสูตรหวย</>}
-          </button>
-          <hr />
-          <button 
-             onClick={handleDownload}
-             disabled={isDownloading}
-             className={`w-full py-3 border-2 rounded-xl font-bold flex items-center justify-center gap-2 transition ${
-               isDownloading 
-                 ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
-                 : 'border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-green-600 hover:border-green-200'
-             }`}
-          >
-             <FaDownload /> {isDownloading ? 'กำลังบันทึก...' : 'บันทึกรูปภาพ'}
-          </button>
-        </div>
-
-        {/* CENTER PREVIEW */}
-        <div className="flex-1 bg-gray-200 relative overflow-hidden flex items-center justify-center p-4 z-0">
+        {/* ==================================================== */}
+        {/* 1. CENTER PREVIEW (Mobile: Top, Desktop: Center) */}
+        {/* ==================================================== */}
+        <div className="order-1 md:order-2 w-full h-[55vh] md:h-full md:flex-1 bg-gray-100 flex items-center justify-center p-4 md:p-8 z-10 shrink-0 relative shadow-inner md:shadow-none">
              <div 
-                className="shadow-2xl bg-white"
+                className="shadow-[0_10px_40px_rgba(0,0,0,0.15)] bg-white rounded-md overflow-hidden transition-transform duration-300 hover:scale-[1.02]"
                 style={{
                     height: '100%',
-                    maxHeight: '90vh',
+                    maxHeight: '100%',
                     width: 'auto',
                     aspectRatio: `${canvasConfig.width} / ${canvasConfig.height}`
                 }}
              >
                 <div style={{ width: '100%', height: '100%' }}>
-                    {/* ✅ ส่ง onStageRef ไปจับ Stage ของ Konva */}
                     <EditorCanvas readOnly={true} onStageRef={(ref) => (stageRef.current = ref)} />
                 </div>
              </div>
         </div>
 
-        {/* RIGHT SIDEBAR (Styles) */}
-        {(templateData?.template_backgrounds && templateData.template_backgrounds.length > 0) && (
-            <div className="w-full md:w-72 bg-white p-4 shadow-lg z-20 overflow-y-auto border-l border-gray-200">
-                <h3 className="font-bold text-gray-700 mb-4 flex items-center gap-2 sticky top-0 bg-white py-2 z-10">
-                    <FaPalette className="text-purple-600" /> เลือกธีมพื้นหลัง
-                </h3>
-                <div className="grid grid-cols-2 gap-3 pb-4">
-                    {/* Default */}
-                    <div 
-                        onClick={() => handleSelectBackground(templateData.background_url, 'default')}
-                        className={`cursor-pointer rounded-lg overflow-hidden border-2 transition relative aspect-9/16 group ${
-                            activeBgId === 'default' ? 'border-purple-600 ring-2 ring-purple-100' : 'border-gray-100 hover:border-gray-300'
-                        }`}
-                    >
-                        <img src={templateData.background_url} className="w-full h-full object-cover" />
-                        <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-[10px] p-1.5 text-center truncate backdrop-blur-sm">
-                            มาตรฐาน
-                        </div>
-                    </div>
+        {/* ==================================================== */}
+        {/* 2. LEFT SIDEBAR (Mobile: Middle, Desktop: Left) */}
+        {/* ==================================================== */}
+        <div className="order-2 md:order-1 w-full md:w-80 bg-white shadow-xl z-20 flex flex-col md:h-full md:overflow-y-auto border-t md:border-r border-gray-200 shrink-0">
+          <div className="p-6 flex flex-col gap-6">
 
-                    {/* Alternatives */}
-                    {templateData.template_backgrounds.map((bg: any) => (
+            {/* Date Selection */}
+            <div className="bg-orange-50/50 p-4 rounded-2xl border border-orange-100 shadow-sm transition hover:shadow-md hover:border-orange-200">
+               <label className="text-sm font-bold text-orange-800 mb-3 flex items-center gap-2">
+                 <FaCalendarAlt /> เลือกงวดวันที่
+               </label>
+               <input 
+                 type="date"
+                 value={selectedDate}
+                 onChange={(e) => setSelectedDate(e.target.value)}
+                 className="w-full p-2.5 bg-white border border-orange-200 rounded-xl text-gray-700 outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent cursor-pointer shadow-sm"
+               />
+            </div>
+
+            {/* Seed Selection */}
+            <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100 shadow-sm transition hover:shadow-md hover:border-blue-200">
+              <label className="text-sm font-bold text-blue-800 mb-3 flex items-center gap-2">
+                เลขตั้งต้น (Seed)
+              </label>
+              <input 
+                type="text" 
+                value={seed}
+                onChange={(e) => setSeed(e.target.value)}
+                placeholder="เช่น รางวัลที่ 1..."
+                className="w-full p-3 bg-white border border-blue-200 rounded-xl text-lg text-center font-mono tracking-widest focus:ring-2 focus:ring-blue-500 outline-none shadow-sm placeholder:text-gray-300"
+              />
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col gap-3 mt-2">
+                <button 
+                  onClick={handleGenerate}
+                  disabled={isGenerating}
+                  className={`w-full py-4 rounded-xl font-bold text-white text-lg shadow-[0_4px_15px_rgba(59,130,246,0.3)] flex items-center justify-center gap-2 transition-all transform hover:scale-[1.02] active:scale-95 ${
+                    isGenerating ? 'bg-gray-400 shadow-none cursor-not-allowed' : 'bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'
+                  }`}
+                >
+                  {isGenerating ? (
+                      <><div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div> กำลังคำนวณ...</>
+                  ) : <><FaMagic /> คำนวณสูตรหวย</>}
+                </button>
+
+                <button 
+                   onClick={handleDownload}
+                   disabled={isDownloading}
+                   className={`w-full py-3.5 border-2 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95 ${
+                     isDownloading 
+                       ? 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed'
+                       : 'bg-white border-green-200 text-green-600 hover:bg-green-50 hover:border-green-300 shadow-sm hover:shadow'
+                   }`}
+                >
+                   <FaDownload /> {isDownloading ? 'กำลังบันทึก...' : 'บันทึกรูปภาพ'}
+                </button>
+            </div>
+
+          </div>
+        </div>
+
+        {/* ==================================================== */}
+        {/* 3. RIGHT SIDEBAR (Mobile: Bottom, Desktop: Right) */}
+        {/* ==================================================== */}
+        {(templateData?.template_backgrounds && templateData.template_backgrounds.length > 0) && (
+            <div className="order-3 md:order-3 w-full md:w-72 bg-white shadow-xl z-20 flex flex-col md:h-full md:overflow-y-auto border-t md:border-l border-gray-200 shrink-0">
+                <div className="p-6">
+                    <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                        <FaPalette className="text-purple-600" /> เลือกธีมพื้นหลัง
+                    </h3>
+                    
+                    {/* Grid แสดงรูปภาพ ย่อให้เล็กลงหน่อยเพื่อความสวยงามในมือถือ */}
+                    <div className="grid grid-cols-3 md:grid-cols-2 gap-3 pb-6">
+                        
+                        {/* Default */}
                         <div 
-                            key={bg.id}
-                            onClick={() => handleSelectBackground(bg.url, bg.id)}
-                            className={`cursor-pointer rounded-lg overflow-hidden border-2 transition relative aspect-9/16 group ${
-                                activeBgId === bg.id ? 'border-purple-600 ring-2 ring-purple-100' : 'border-gray-100 hover:border-gray-300'
+                            onClick={() => handleSelectBackground(templateData.background_url, 'default')}
+                            className={`cursor-pointer rounded-xl overflow-hidden border-2 transition-all relative aspect-9/16 group shadow-sm ${
+                                activeBgId === 'default' ? 'border-purple-500 ring-4 ring-purple-100 scale-[1.02]' : 'border-transparent hover:border-gray-300 hover:shadow-md'
                             }`}
                         >
-                            <img src={bg.url} className="w-full h-full object-cover" />
-                            <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-[10px] p-1.5 text-center truncate backdrop-blur-sm">
-                                {bg.name}
+                            <img src={templateData.background_url} className="w-full h-full object-cover" />
+                            <div className="absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/80 to-transparent pt-6 pb-2 px-1 text-white text-[10px] text-center truncate font-medium">
+                                มาตรฐาน
                             </div>
+                            {activeBgId === 'default' && (
+                                <div className="absolute top-2 right-2 bg-purple-500 text-white rounded-full p-1 shadow-md">
+                                    <FaCheck size={8} />
+                                </div>
+                            )}
                         </div>
-                    ))}
+
+                        {/* Alternatives */}
+                        {templateData.template_backgrounds.map((bg: any) => (
+                            <div 
+                                key={bg.id}
+                                onClick={() => handleSelectBackground(bg.url, bg.id)}
+                                className={`cursor-pointer rounded-xl overflow-hidden border-2 transition-all relative aspect-9/16 group shadow-sm ${
+                                    activeBgId === bg.id ? 'border-purple-500 ring-4 ring-purple-100 scale-[1.02]' : 'border-transparent hover:border-gray-300 hover:shadow-md'
+                                }`}
+                            >
+                                <img src={bg.url} className="w-full h-full object-cover" />
+                                <div className="absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/80 to-transparent pt-6 pb-2 px-1 text-white text-[10px] text-center truncate font-medium">
+                                    {bg.name}
+                                </div>
+                                {activeBgId === bg.id && (
+                                    <div className="absolute top-2 right-2 bg-purple-500 text-white rounded-full p-1 shadow-md">
+                                        <FaCheck size={8} />
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
         )}
+
+        {/* Hidden Canvas สำหรับ Export */}
+        <div
+            id="hidden-capture-canvas-single"
+            style={{
+                position: 'fixed',
+                top: 0,
+                left: 0, 
+                width: canvasConfig.width,
+                height: canvasConfig.height,
+                zIndex: -50,
+                pointerEvents: 'none',
+            }}
+        >
+            <EditorCanvas key={seed + selectedDate + activeBgId} readOnly={true} />
+        </div>
 
       </div>
     </div>
