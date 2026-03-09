@@ -162,7 +162,7 @@ export const AdminEditorPage = () => {
     }
   };
 
-  // ... (ส่วน handleAddBackground, removeBackground เหมือนเดิม) ...
+
   const handleAddBackground = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     const file = e.target.files[0];
@@ -255,26 +255,36 @@ export const AdminEditorPage = () => {
 
       {/* Main Content */}
       <div className="flex w-full h-full pt-16">
+        {/* Left Sidebar (Toolbox) */}
         <div className="flex-none z-20 shadow-md h-full">
             <Toolbox />
         </div>
         
-        <div className="flex-1 relative z-0 bg-gray-200 overflow-hidden h-full flex flex-col">
-            <EditorCanvas />
+        {/* Center Area (Canvas + Background Manager) */}
+        <div className="flex-1 bg-gray-200 overflow-hidden h-full flex flex-col">
             
-            {/* Background Manager Bar */}
-            <div className="bg-white p-2 border-t border-gray-200 flex items-center gap-4 overflow-x-auto h-32 absolute bottom-0 w-full z-30">
+            {/* พื้นที่ Editor Canvas ให้กินพื้นที่ส่วนใหญ่ (flex-1) */}
+            {/* หุ้มด้วย div เพื่อจำกัดขอบเขตไม่ให้ล้น */}
+            <div className="flex-1 relative overflow-hidden">
+                <EditorCanvas />
+            </div>
+            
+            {/* Background Manager Bar (Bottom) */}
+            {/* เอา absolute bottom-0 ทิ้งไป เพื่อไม่ให้มันลอยบัง Canvas */}
+            <div className="bg-white p-2 border-t border-gray-200 flex items-center gap-4 overflow-x-auto h-32 w-full z-30 shrink-0">
                 <div className="flex-none flex flex-col items-center justify-center w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg text-gray-400 hover:bg-gray-50 cursor-pointer relative">
                     <FaImage size={24} />
                     <span className="text-xs mt-1">เพิ่มพื้นหลัง</span>
                     <input type="file" onChange={handleAddBackground} className="absolute inset-0 opacity-0 cursor-pointer" />
                 </div>
 
+                {/* Main Background */}
                 <div className="relative group w-24 h-24 flex-none border-2 border-blue-500 rounded-lg overflow-hidden">
                     <img src={backgroundImage || "https://placehold.co/100"} className="w-full h-full object-cover" />
                     <div className="absolute bottom-0 left-0 right-0 bg-blue-600 text-white text-[10px] text-center">รูปปัจจุบัน</div>
                 </div>
 
+                {/* Extra Backgrounds List */}
                 {backgrounds.map((bg, idx) => (
                     <div key={idx} className="relative group w-24 h-24 flex-none border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition">
                         <img 
@@ -302,6 +312,7 @@ export const AdminEditorPage = () => {
             </div>
         </div>
 
+        {/* Right Sidebar (Properties) */}
         <div className="flex-none z-20 shadow-md border-l border-gray-200 h-full">
             <Properties />
         </div>

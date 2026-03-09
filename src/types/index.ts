@@ -14,11 +14,15 @@ export interface TemplateSlot {
   height: number;
   style_config: {
     color: string;
+    gradientColors?: string[];
     fontSize: number;
     backgroundColor?: string;
     fontFamily: string;
     textAlign: 'left' | 'center' | 'right';
     fontWeight: 'normal' | 'bold';
+    stroke?: string;
+    textShadow?: string;
+    strokeWidth?: number;
   };
   z_index: number;
   created_at: string;

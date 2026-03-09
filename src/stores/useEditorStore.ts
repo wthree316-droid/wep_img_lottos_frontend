@@ -16,6 +16,7 @@ export interface EditorElement {
   height: number;
   style_config: {
     color: string;
+    gradientColors?: string[];
     fontSize: number;
     backgroundColor?: string;
     fontFamily: string;
@@ -23,6 +24,7 @@ export interface EditorElement {
     fontWeight: 'normal' | 'bold';
     textShadow?: string; // ✅ เพิ่ม textShadow
     stroke?: string; // ✅ เพิ่มขอบตัวหนังสือ
+    strokeWidth?: number;
   };
 }
 
@@ -32,12 +34,14 @@ interface EditorState {
   canvasConfig: { width: number; height: number };
   backgroundImage: string;
   
-
-  addElement: (type: ElementType, dataKey?: string) => void; // ✅ รับ dataKey ได้
+  addElement: (type: ElementType, dataKey?: string) => void;
   updateElement: (id: string, changes: Partial<EditorElement>) => void;
+  
+  // ✅ เพิ่มบรรทัดนี้: ฟังก์ชันสำหรับอัปเดตสไตล์ทั้งหมด
+  updateAllElementsStyle: (styleChanges: Partial<EditorElement['style_config']>) => void; 
+  
   selectElement: (id: string | null) => void;
   removeElement: (id: string) => void;
-  
   setBackgroundImage: (url: string) => void;
   setCanvasSize: (width: number, height: number) => void;
   setElements: (elements: EditorElement[]) => void;
@@ -97,6 +101,16 @@ export const useEditorStore = create<EditorState>((set) => ({
       ),
     })),
 
+  // ✅ เพิ่มบล็อกนี้ลงไป: วนลูปแก้เฉพาะ Text / Static_Text ไม่ยุ่งกับรูปภาพหรือ QR
+  updateAllElementsStyle: (styleChanges) =>
+    set((state) => ({
+      elements: state.elements.map((el) =>
+        el.type !== 'qr_code' && el.type !== 'image'
+          ? { ...el, style_config: { ...el.style_config, ...styleChanges } }
+          : el
+      ),
+    })),
+
   selectElement: (id) => set({ selectedId: id }),
   
   removeElement: (id) =>
@@ -108,4 +122,5 @@ export const useEditorStore = create<EditorState>((set) => ({
   setBackgroundImage: (url) => set({ backgroundImage: url }),
   setCanvasSize: (width, height) => set({ canvasConfig: { width, height } }),
   setElements: (elements) => set({ elements }),
+
 }));

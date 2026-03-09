@@ -168,6 +168,18 @@ export const EditorCanvas = ({ readOnly = false, onStageRef }: EditorCanvasProps
                            shadowColor = parts[3];
                        }
                    }
+                   // ✅ สร้างชุดสีไล่ระดับจาก Array
+                   const currentColors = el.style_config.gradientColors || [el.style_config.color];
+                   const isGradient = currentColors.length > 1; // ถ้ามีสีมากกว่า 1 แปลว่าเป็น Gradient
+                   
+                   // คำนวณจุดหยุดสี (Color Stops) ให้กระจายเท่าๆ กันจากบนลงล่าง
+                   let colorStops: (string | number)[] = [];
+                   if (isGradient) {
+                       currentColors.forEach((color, index) => {
+                           const position = index / (currentColors.length - 1); // 0 ถึง 1
+                           colorStops.push(position, color);
+                       });
+                   }
 
                    return (
                      <Text
@@ -179,11 +191,18 @@ export const EditorCanvas = ({ readOnly = false, onStageRef }: EditorCanvasProps
                         width={w} height={h}
                         fontSize={el.style_config.fontSize}
                         fontFamily={el.style_config.fontFamily}
-                        fill={el.style_config.color}
+                        
+                        // ✅ ถ้ามีสีเดียวก็ใช้ fill ธรรมดา ถ้าไล่สีให้ใช้ gradient
+                        fill={isGradient ? undefined : currentColors[0]}
+                        fillPriority={isGradient ? 'linear-gradient' : 'color'}
+                        fillLinearGradientStartPoint={{ x: 0, y: 0 }}
+                        fillLinearGradientEndPoint={{ x: 0, y: h }} // ไล่สีจากบนลงล่าง
+                        fillLinearGradientColorStops={colorStops}
+                        
                         align={el.style_config.textAlign}
                         fontStyle={el.style_config.fontWeight}
                         stroke={el.style_config.stroke}
-                        strokeWidth={el.style_config.stroke ? 1 : 0}
+                        strokeWidth={el.style_config.stroke ? (el.style_config.strokeWidth || 1) : 0}
                         shadowColor={shadowColor}
                         shadowBlur={shadowBlur}
                         shadowOffsetX={shadowOffsetX}
