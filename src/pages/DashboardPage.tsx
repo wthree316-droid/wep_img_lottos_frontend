@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
     FaCog, FaCheckSquare, FaSquare, FaDownload, FaCalendarAlt, 
@@ -6,13 +6,12 @@ import {
 } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
 import { LogoutButton } from '../components/LogoutButton';
-import { useEditorStore, type EditorElement } from '../stores/useEditorStore';
-import { EditorCanvas } from '../components/editor/EditorCanvas';
+import Konva from 'konva';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
-import { preloadImage, waitForFonts } from '../utils/imageHelpers';
+import { waitForFonts } from '../utils/imageHelpers';
 import { apiClient } from '../config/api';
-import { BATCH_GENERATION_CONFIG, DATA_KEYS } from '../config/constants';
+import { DATA_KEYS } from '../config/constants';
 import type { Lottery, Template, GeneratePayload, GenerateResponse, TemplateSlot, User } from '../types';
 
 const formatDateThai = (dateStr: string) => {
@@ -21,6 +20,17 @@ const formatDateThai = (dateStr: string) => {
   return date.toLocaleDateString('th-TH', {
     day: 'numeric', month: 'short', year: '2-digit'
   });
+};
+
+// ✅ ฟังก์ชันช่วยโหลดรูปภาพเข้า Memory โดยตรง
+const loadNativeImage = (url: string): Promise<HTMLImageElement> => {
+    return new Promise((resolve, reject) => {
+        const img = new window.Image();
+        img.crossOrigin = 'Anonymous';
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error(`โหลดรูปไม่สำเร็จ: ${url}`));
+        img.src = url;
+    });
 };
 
 const CountdownTimer = ({ targetDate }: { targetDate: string }) => {
@@ -80,7 +90,6 @@ export const DashboardPage = () => {
   const [commonSeed, setCommonSeed] = useState('');
   const [isZipping, setIsZipping] = useState(false);
   const [progress, setProgress] = useState('');
-  const [refreshKey, setRefreshKey] = useState(0);
   
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -88,11 +97,7 @@ export const DashboardPage = () => {
   const [myTemplates, setMyTemplates] = useState<Template[]>([]);
   const [currentTemplateId, setCurrentTemplateId] = useState<string | null>(null);
 
-  // 🌟 State สำหรับกลุ่มหวยที่บันทึกไว้
   const [savedGroups, setSavedGroups] = useState<SavedGroup[]>([]);
-
-  const { setElements, setCanvasSize, setBackgroundImage, canvasConfig } = useEditorStore();
-  const batchStageRef = useRef<any>(null);
 
   // โหลดข้อมูลหวยและธีม
   useEffect(() => {
@@ -103,7 +108,6 @@ export const DashboardPage = () => {
         let myPersonalTemplate: Template | null = null;
         
         if (user) {
-            // โหลดกลุ่มหวยที่เคยบันทึกไว้จาก LocalStorage
             const storedGroups = localStorage.getItem(`lotto_groups_${user.id}`);
             if (storedGroups) setSavedGroups(JSON.parse(storedGroups));
 
@@ -149,7 +153,6 @@ export const DashboardPage = () => {
     if (user) loadData();
   }, [user]);
 
-  // ระบบค้นหา
   useEffect(() => {
     if (!searchTerm) { setFilteredLotteries(lotteries); return; }
     const lower = searchTerm.toLowerCase();
@@ -168,7 +171,6 @@ export const DashboardPage = () => {
     else setSelectedIds(new Set(filteredLotteries.map(l => l.id))); 
   };
 
-  // 🌟 ฟังก์ชันจัดการกลุ่มหวย (Save / Apply / Delete)
   const handleSaveGroup = () => {
       if (selectedIds.size === 0) return alert("กรุณาติ๊กเลือกหวยอย่างน้อย 1 ใบก่อนบันทึกกลุ่ม");
       const name = prompt("ตั้งชื่อกลุ่มหวยนี้ (เช่น ชุดเช้า, ชุดฮานอย, รูปแบบที่ 1):");
@@ -191,15 +193,14 @@ export const DashboardPage = () => {
   };
 
   const handleDeleteGroup = (e: React.MouseEvent, groupId: string) => {
-      e.stopPropagation(); // กันไม่ให้ไปกดโดนปุ่มเลือกกลุ่ม
+      e.stopPropagation(); 
       if (!confirm("ต้องการลบกลุ่มนี้ใช่หรือไม่?")) return;
       const updatedGroups = savedGroups.filter(g => g.id !== groupId);
       setSavedGroups(updatedGroups);
       if (user) localStorage.setItem(`lotto_groups_${user.id}`, JSON.stringify(updatedGroups));
   };
 
-
-  const handleOpenTemplateModal = async () => { /* ... โค้ดเดิม ... */ 
+  const handleOpenTemplateModal = async () => { 
       if (!user) return;
       try {
           const currentUser = await apiClient.get<User>(`/api/users/${user.id}`);
@@ -216,7 +217,7 @@ export const DashboardPage = () => {
       } catch (e) { console.error(e); alert("โหลดข้อมูลไม่สำเร็จ"); }
   };
 
-  const handleSelectTemplate = async (templateId: string) => { /* ... โค้ดเดิม ... */ 
+  const handleSelectTemplate = async (templateId: string) => { 
       try {
           if (!user) return;
           await apiClient.put(`/api/users/${user.id}`, { assigned_template_id: templateId });
@@ -226,8 +227,8 @@ export const DashboardPage = () => {
       } catch (e) { console.error(e); alert("เปลี่ยนธีมไม่สำเร็จ"); }
   };
 
+  // 🚀 ฟังก์ชันโหลดเหมาเข่งแบบ Turbo
   const handleBatchDownload = async () => {
-    // ... โค้ด Batch Download เดิมทั้งหมด ไม่เปลี่ยนแปลง ...
     if (selectedIds.size === 0) return alert("กรุณาเลือกหวยอย่างน้อย 1 ใบ");
     setIsZipping(true);
     const zip = new JSZip();
@@ -235,78 +236,166 @@ export const DashboardPage = () => {
     const failedItems: string[] = [];
 
     try {
-      const selectedLotteries = lotteries.filter(l => selectedIds.has(l.id));
-      for (let i = 0; i < selectedLotteries.length; i++) {
-        const lotto = selectedLotteries[i];
-        setProgress(`กำลังสร้าง (${i + 1}/${selectedLotteries.length}): ${lotto.name}`);
-        try {
-          setRefreshKey(prev => prev + 1);
-          setElements([]); setBackgroundImage('');
-          await new Promise(r => setTimeout(r, BATCH_GENERATION_CONFIG.stateUpdateDelay));
+        await waitForFonts(); 
 
-          let templateId = lotto.template_id; 
-          if (!templateId) throw new Error("หวยนี้ไม่มีแม่พิมพ์");
-          const template = await apiClient.get<Template>(`/api/templates/${templateId}`);
+        const selectedLotteries = lotteries.filter(l => selectedIds.has(l.id));
+        setProgress(`กำลังโหลดแม่พิมพ์ที่ต้องใช้...`);
 
-          const genPayload: GeneratePayload = {
-            template_id: template.id, user_seed: commonSeed, target_user_id: user?.id, 
-            slot_configs: template.template_slots!.map((s: TemplateSlot) => {
-                let slotType = 'system_label';
-                if (s.slot_type === 'qr_code' || s.data_key === DATA_KEYS.QR_CODE) slotType = 'qr_code';
-                else if (s.slot_type === 'static_text' || s.data_key === DATA_KEYS.LINE_ID) slotType = 'static_text';
-                else if (s.data_key === DATA_KEYS.LOTTERY_NAME || s.data_key === DATA_KEYS.LOTTERY_DATE) slotType = 'system_label';
-                else if (s.data_key) slotType = 'user_input';
-                return { id: s.id, slot_type: slotType as any, data_key: s.data_key || undefined };
-            })
-          };
-          const genData: GenerateResponse = await apiClient.post('/api/generate', genPayload);
+        const bgCache: Record<string, HTMLImageElement> = {};
+        const templateCache: Record<string, Template> = {};
 
-          if (template.background_url) await preloadImage(template.background_url);
-          setCanvasSize(template.base_width, template.base_height);
-          setBackgroundImage(template.background_url);
-          
-          const finalElements = template.template_slots!.map((slot: TemplateSlot) => {
-            let text = slot.label_text;
-            if (slot.data_key === DATA_KEYS.LOTTERY_NAME) text = lotto.name;
-            else if (slot.data_key === DATA_KEYS.LOTTERY_DATE) text = formatDateThai(commonDate);
-            else if (genData.results[slot.id]) text = genData.results[slot.id];
-
-            return {
-              id: slot.id, type: slot.slot_type === 'qr_code' ? 'qr_code' : (slot.slot_type === 'static_text' ? 'static_text' : 'text'), 
-              label_text: text, dataKey: slot.data_key, pos_x: slot.pos_x, pos_y: slot.pos_y, width: slot.width, height: slot.height, style_config: slot.style_config
-            };
-          });
-
-          setElements(finalElements as EditorElement[]);
-          await waitForFonts();
-          await new Promise(r => setTimeout(r, BATCH_GENERATION_CONFIG.renderDelay));
-
-          if (batchStageRef.current) {
-            const blob = await new Promise<Blob | null>(resolve => batchStageRef.current.toBlob({ pixelRatio: 2, mimeType: 'image/png', callback: resolve }));
-            if (blob && folder) folder.file(`${lotto.name}.png`, blob);
-            else failedItems.push(lotto.name);
-          } else failedItems.push(lotto.name);
-
-        } catch (error: any) {
-          console.error(`Error processing ${lotto.name}:`, error);
-          failedItems.push(`${lotto.name} (${error.message || 'Unknown error'})`);
+        // ✅ 1. โหลด Template และรูปภาพ "ทั้งหมด" ที่จำเป็นต้องใช้ เตรียมไว้ก่อนเลย
+        // (เทคนิคป้องกัน Race Condition ไม่ให้ยิง API ขอแม่พิมพ์เดิมซ้ำซ้อน)
+        const uniqueTemplateIds = [...new Set(selectedLotteries.map(l => l.template_id).filter(id => id))];
+        
+        for (const tId of uniqueTemplateIds) {
+            if (tId && !templateCache[tId]) {
+                templateCache[tId] = await apiClient.get<Template>(`/api/templates/${tId}`);
+                const bgUrl = templateCache[tId].background_url;
+                if (bgUrl && !bgCache[bgUrl]) {
+                    bgCache[bgUrl] = await loadNativeImage(bgUrl);
+                }
+            }
         }
-      }
 
-      setProgress('กำลังบีบอัดไฟล์ ZIP...');
-      const content = await zip.generateAsync({ type: 'blob' });
-      saveAs(content, `Lotto-Set-${commonDate}.zip`);
+        setProgress(`กำลังคำนวณสูตรหวย (0/${selectedLotteries.length})...`);
 
-      if (failedItems.length > 0) alert(`สร้างเสร็จแล้ว แต่มี ${failedItems.length} รายการที่ล้มเหลว:\n${failedItems.join('\n')}`);
+        // ✅ 2. Parallel API: ยิง API คำนวณเลขหวย "พร้อมกันทุกใบ" (ตอนนี้จะไม่ชนกันแล้ว)
+        const generatePromises = selectedLotteries.map(async (lotto) => {
+            let templateId = lotto.template_id; 
+            if (!templateId) throw new Error("หวยนี้ไม่มีแม่พิมพ์");
 
-    } catch (error: any) { alert("เกิดข้อผิดพลาด: " + (error.message || error)); } 
+            // ดึงจาก Cache ที่เตรียมไว้แล้ว 100%
+            const template = templateCache[templateId];
+
+            const genPayload: GeneratePayload = {
+                template_id: template.id, user_seed: commonSeed, target_user_id: user?.id, 
+                slot_configs: template.template_slots!.map((s: TemplateSlot) => {
+                    let slotType = 'system_label';
+                    if (s.slot_type === 'qr_code' || s.data_key === DATA_KEYS.QR_CODE) slotType = 'qr_code';
+                    else if (s.slot_type === 'static_text' || s.data_key === DATA_KEYS.LINE_ID) slotType = 'static_text';
+                    else if (s.data_key === DATA_KEYS.LOTTERY_NAME || s.data_key === DATA_KEYS.LOTTERY_DATE) slotType = 'system_label';
+                    else if (s.data_key) slotType = 'user_input';
+                    return { id: s.id, slot_type: slotType as any, data_key: s.data_key || undefined };
+                })
+            };
+            
+            const genData: GenerateResponse = await apiClient.post('/api/generate', genPayload);
+            return { lotto, template, genData };
+        });
+
+        // รอผลลัพธ์คำนวณทั้งหมด
+        const generatedResults = await Promise.allSettled(generatePromises);
+
+        for (let i = 0; i < generatedResults.length; i++) {
+            const result = generatedResults[i];
+            if (result.status === 'rejected') {
+                failedItems.push(`ใบที่ ${i+1} ล้มเหลว: ${result.reason}`);
+                continue;
+            }
+
+            const { lotto, template, genData } = result.value;
+            setProgress(`กำลังวาดภาพ (${i + 1}/${selectedLotteries.length}): ${lotto.name}`);
+
+            try {
+                const stage = new Konva.Stage({
+                    container: document.createElement('div'),
+                    width: template.base_width,
+                    height: template.base_height,
+                });
+                const layer = new Konva.Layer();
+                stage.add(layer);
+
+                layer.add(new Konva.Rect({ width: template.base_width, height: template.base_height, fill: 'white' }));
+                if (template.background_url && bgCache[template.background_url]) {
+                    layer.add(new Konva.Image({
+                        image: bgCache[template.background_url],
+                        width: template.base_width, height: template.base_height,
+                    }));
+                }
+
+                for (const slot of template.template_slots!) {
+                    let text = slot.label_text;
+                    if (slot.data_key === DATA_KEYS.LOTTERY_NAME) text = lotto.name;
+                    else if (slot.data_key === DATA_KEYS.LOTTERY_DATE) text = formatDateThai(commonDate);
+                    else if (genData.results[slot.id]) text = genData.results[slot.id];
+
+                    const x = (slot.pos_x * template.base_width) / 100;
+                    const y = (slot.pos_y * template.base_height) / 100;
+                    const w = (slot.width * template.base_width) / 100;
+                    const h = (slot.height * template.base_height) / 100;
+
+                    if (slot.slot_type === 'qr_code' || slot.data_key === DATA_KEYS.QR_CODE) {
+                        try {
+                            const qrImg = await loadNativeImage(text || "https://placehold.co/200x200/png?text=QR");
+                            layer.add(new Konva.Image({ image: qrImg, x, y, width: w, height: h }));
+                        } catch(e) { /* ละเว้นถ้า QR error */ }
+                    } else {
+                        const currentColors = slot.style_config.gradientColors || [slot.style_config.color];
+                        const isGradient = currentColors.length > 1;
+                        let colorStops: (number|string)[] = [];
+                        if (isGradient) {
+                            currentColors.forEach((c: string, idx: number) => { colorStops.push(idx / (currentColors.length - 1), c); });
+                        }
+
+                        let shadowBlur = 0, shadowColor = 'transparent', shadowOffsetX = 0, shadowOffsetY = 0;
+                        if (slot.style_config.textShadow) {
+                            const parts = slot.style_config.textShadow.split(' ');
+                            if (parts.length >= 4) {
+                                shadowOffsetX = parseInt(parts[0]); shadowOffsetY = parseInt(parts[1]);
+                                shadowBlur = parseInt(parts[2]); shadowColor = parts[3];
+                            }
+                        }
+
+                        layer.add(new Konva.Text({
+                            text: text, x, y, width: w, height: h,
+                            fontSize: slot.style_config.fontSize,
+                            fontFamily: slot.style_config.fontFamily,
+                            fill: isGradient ? undefined : currentColors[0],
+                            fillPriority: isGradient ? 'linear-gradient' : 'color',
+                            fillLinearGradientStartPoint: { x: 0, y: 0 },
+                            fillLinearGradientEndPoint: { x: 0, y: h },
+                            fillLinearGradientColorStops: colorStops,
+                            align: slot.style_config.textAlign,
+                            fontStyle: slot.style_config.fontWeight,
+                            stroke: slot.style_config.stroke,
+                            strokeWidth: slot.style_config.stroke ? (slot.style_config.strokeWidth || 1) : 0,
+                            shadowColor, shadowBlur, shadowOffsetX, shadowOffsetY,
+                            verticalAlign: 'middle', padding: 10, lineHeight: 1.4
+                        }));
+                    }
+                }
+
+                const blob = await new Promise<Blob | null>(resolve => {
+                    stage.toBlob({ pixelRatio: 2, mimeType: 'image/jpeg', quality: 0.9, callback: resolve });
+                });
+
+                if (blob && folder) folder.file(`${lotto.name}.jpg`, blob);
+                else failedItems.push(lotto.name);
+
+                stage.destroy(); 
+
+            } catch (drawError: any) {
+                console.error(`Draw Error ${lotto.name}:`, drawError);
+                failedItems.push(`${lotto.name} (Draw Error)`);
+            }
+        }
+
+        setProgress('กำลังบีบอัดไฟล์ ZIP...');
+        const content = await zip.generateAsync({ type: 'blob' });
+        saveAs(content, `Lotto-Set-${commonDate}.zip`);
+
+        if (failedItems.length > 0) alert(`สร้างเสร็จแล้ว แต่มีล้มเหลว ${failedItems.length} รายการ:\n${failedItems.join('\n')}`);
+
+    } catch (error: any) { 
+        alert("เกิดข้อผิดพลาด: " + (error.message || error)); 
+    } 
     finally { setIsZipping(false); setProgress(''); }
   };
 
   return (
     <div className="min-h-screen bg-[#f8f9fa] font-sans pb-20">
       
-      {/* 🌟 Premium Header (Sticky) */}
       <div className="bg-white/80 backdrop-blur-lg border-b border-gray-200 sticky top-0 z-40 shadow-sm">
           <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
@@ -321,7 +410,7 @@ export const DashboardPage = () => {
             <div className="flex items-center gap-3 overflow-x-auto pb-1 hide-scrollbar">
               <button 
                   onClick={handleOpenTemplateModal}
-                  className="flex items-center gap-2 bg-linear-to-r from-purple-50 to-pink-50 border border-purple-100 text-purple-700 px-4 py-2 rounded-xl font-bold hover:shadow-md transition text-sm whitespace-nowrap"
+                  className="flex items-center gap-2 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-100 text-purple-700 px-4 py-2 rounded-xl font-bold hover:shadow-md transition text-sm whitespace-nowrap"
               >
                   <FaPalette /> ธีมแม่พิมพ์
               </button>
@@ -338,9 +427,7 @@ export const DashboardPage = () => {
 
       <div className="max-w-7xl mx-auto px-4 md:px-8 mt-8">
         
-        {/* 🌟 Modern Controls (Tabs & Search) */}
         <div className="flex flex-col lg:flex-row gap-4 mb-8 bg-white p-2 rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.04)] border border-gray-100">
-            {/* iOS Style Segmented Control */}
             <div className="flex bg-gray-100 p-1.5 rounded-xl flex-1 lg:max-w-md relative">
                 <button 
                     onClick={() => setMode('single')}
@@ -369,9 +456,6 @@ export const DashboardPage = () => {
           <div className="text-center py-20 text-gray-400 font-bold animate-pulse">กำลังโหลดเมนู... ⏳</div>
         ) : (
           <div className="animate-fade-in">
-            {/* ========================================================= */}
-            {/* 🎯 โหมด SINGLE (ทีละใบ) */}
-            {/* ========================================================= */}
             {mode === 'single' && (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-5">
                     {filteredLotteries.map((lotto) => (
@@ -379,7 +463,7 @@ export const DashboardPage = () => {
                         key={lotto.id} to={`/play/${lotto.id}`}
                         className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 p-4 border border-gray-100 group flex flex-col items-center text-center cursor-pointer relative overflow-hidden"
                     >
-                        <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-linear-to-br from-blue-50 to-indigo-50 mb-3 overflow-hidden border-2 border-white shadow-inner group-hover:scale-105 transition-transform duration-300 relative">
+                        <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-blue-50 to-indigo-50 mb-3 overflow-hidden border-2 border-white shadow-inner group-hover:scale-105 transition-transform duration-300 relative">
                             {lotto.templates?.background_url ? (
                                 <img src={lotto.templates.background_url} className="w-full h-full object-cover" />
                             ) : (
@@ -397,20 +481,15 @@ export const DashboardPage = () => {
                 </div>
             )}
 
-            {/* ========================================================= */}
-            {/* 📦 โหมด BATCH (เหมาเข่ง) + กลุ่มที่บันทึกไว้ */}
-            {/* ========================================================= */}
             {mode === 'batch' && (
                 <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
                     
-                    {/* Panel ซ้าย: ตั้งค่ารวม & โหลดกลุ่ม */}
                     <div className="w-full lg:w-[320px] bg-white p-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 lg:sticky lg:top-28 shrink-0">
                         <h3 className="font-extrabold text-lg mb-5 flex items-center gap-2 text-gray-800 border-b pb-4">
                             <FaCog className="text-purple-600" /> ตั้งค่า & ดาวน์โหลด
                         </h3>
                         
                         <div className="space-y-5">
-                            {/* 🌟 ส่วนจัดการกลุ่ม (Quick Select) */}
                             <div className="bg-purple-50/50 p-4 rounded-2xl border border-purple-100">
                                 <div className="flex justify-between items-center mb-3">
                                     <label className="text-sm font-bold text-purple-900 flex items-center gap-1.5">
@@ -451,7 +530,6 @@ export const DashboardPage = () => {
                                 )}
                             </div>
 
-                            {/* ตั้งค่าวันที่และ Seed */}
                             <div className="space-y-3">
                                 <div>
                                     <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">วันที่บนภาพ</label>
@@ -469,7 +547,6 @@ export const DashboardPage = () => {
                                 </div>
                             </div>
                             
-                            {/* สรุปและปุ่มโหลด */}
                             <div className="pt-5 border-t border-gray-100 mt-2">
                                 <div className="flex justify-between items-center text-sm mb-3 bg-gray-50 p-2 rounded-lg border border-gray-100">
                                     <span className="text-gray-600 font-medium">เลือกหวยแล้ว:</span>
@@ -479,7 +556,7 @@ export const DashboardPage = () => {
                                     onClick={handleBatchDownload} 
                                     disabled={isZipping || selectedIds.size === 0} 
                                     className={`w-full py-4 rounded-xl font-bold text-white shadow-lg flex items-center justify-center gap-2 transition-all transform active:scale-95 ${
-                                        isZipping ? 'bg-gray-400 cursor-not-allowed shadow-none' : selectedIds.size === 0 ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none' : 'bg-linear-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 hover:shadow-purple-500/30'
+                                        isZipping ? 'bg-gray-400 cursor-not-allowed shadow-none' : selectedIds.size === 0 ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none' : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 hover:shadow-purple-500/30'
                                     }`}
                                 >
                                     {isZipping ? <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div> : <FaDownload />}
@@ -489,7 +566,6 @@ export const DashboardPage = () => {
                         </div>
                     </div>
 
-                    {/* Panel ขวา: รายการหวยให้ติ๊กเลือก */}
                     <div className="flex-1 w-full">
                         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-2 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
                             <h3 className="font-bold text-gray-700 flex items-center gap-2">
@@ -513,7 +589,7 @@ export const DashboardPage = () => {
                                         className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all duration-200 flex items-center gap-3 relative overflow-hidden ${
                                             isSelected 
                                             ? 'border-purple-500 bg-purple-50/50 shadow-sm transform scale-[1.02]' 
-                                            : 'border-transparent bg-white hover:border-gray-300 hover:shadow-md'
+                                            : 'bg-white hover:border-gray-300 hover:shadow-md border-gray-100'
                                         }`}
                                     >
                                         <div className={`text-2xl transition-colors ${isSelected ? 'text-purple-600' : 'text-gray-200 group-hover:text-gray-300'}`}>
@@ -535,41 +611,26 @@ export const DashboardPage = () => {
         )}
       </div>
 
-      {/* ========================================================= */}
-      {/* 🌟 Loading Overlay (ตอนสร้าง Zip) */}
-      {/* ========================================================= */}
       {isZipping && (
         <div className="fixed inset-0 z-9999 flex flex-col items-center justify-center backdrop-blur-md">
             <div className="absolute inset-0 bg-gray-900/90 z-40"></div>
             
-            <div id="batch-capture-canvas" style={{ position: 'fixed', top: 0, left: 0, width: canvasConfig.width, height: canvasConfig.height, zIndex: 10, pointerEvents: 'none', opacity: 0 }}>
-                <EditorCanvas key={refreshKey} readOnly={true} onStageRef={(stage) => (batchStageRef.current = stage)} />
-            </div>
-            
             <div className="relative z-50 text-white text-center flex flex-col items-center max-w-md w-full px-4">
                 <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mb-6"></div>
-                <div className="text-2xl font-bold mb-2 bg-clip-text text-transparent bg-linear-to-r from-purple-400 to-pink-400">
-                    กำลังสร้างภาพคุณภาพสูง...
+                <div className="text-2xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-400">
+                    กำลังสร้างภาพความเร็วสูง... 🚀
                 </div>
-                <div className="text-sm font-medium text-gray-300 bg-white/10 px-4 py-2 rounded-full mb-8 backdrop-blur-sm">
+                <div className="text-sm font-medium text-gray-300 bg-white/10 px-4 py-2 rounded-full mb-8 backdrop-blur-sm shadow-inner">
                     {progress}
                 </div>
                 
-                <div className="relative shadow-2xl border border-white/20 rounded-2xl overflow-hidden bg-black w-50 md:w-62.5 aspect-9/16 flex items-center justify-center">
-                    <div style={{ transform: `scale(${(window.innerWidth < 768 ? 200 : 250) / canvasConfig.width})`, transformOrigin: 'top left', width: canvasConfig.width, height: canvasConfig.height }}>
-                        <EditorCanvas key={`preview-${refreshKey}`} readOnly={true} />
-                    </div>
-                </div>
                 <p className="text-xs text-gray-400 mt-6 bg-black/50 px-3 py-1.5 rounded-lg border border-white/10">
-                    ⚠️ กรุณาอย่าปิดหน้าต่างนี้หรือสลับแอปจนกว่าจะเสร็จ
+                    ⚠️ กรุณาอย่าปิดหน้าต่างนี้จนกว่าจะดาวน์โหลดสำเร็จ
                 </p>
             </div>
         </div>
       )}
 
-      {/* ========================================================= */}
-      {/* 🌟 Modal เปลี่ยนธีมแม่พิมพ์ */}
-      {/* ========================================================= */}
       {isTemplateModalOpen && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
               <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl flex flex-col overflow-hidden max-h-[90vh] animate-fade-in">
@@ -593,7 +654,7 @@ export const DashboardPage = () => {
                                   <div className="aspect-9/16 bg-gray-100 relative">
                                       {t.background_url ? ( <img src={t.background_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" /> ) : ( <div className="flex items-center justify-center h-full text-gray-300 font-bold">NO IMAGE</div> )}
                                       
-                                      <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                                       
                                       {currentTemplateId === t.id && ( 
                                           <div className="absolute top-3 right-3 bg-purple-600 text-white rounded-full p-1.5 shadow-lg backdrop-blur-sm"> 

@@ -111,17 +111,17 @@ export const EditorCanvas = ({ readOnly = false, onStageRef }: EditorCanvasProps
          }}
       >
           <Stage
-            width={canvasConfig.width}
-            height={canvasConfig.height}
+            // ✅ 1. ย่อขนาด Canvas ใน RAM ให้เท่ากับที่ตาเห็น (ลดการกินสเปคเครื่อง 10 เท่า)
+            width={canvasConfig.width * scale}
+            height={canvasConfig.height * scale}
+            // ✅ 2. ให้ Konva จัดการย่อขยายพิกัดอัตโนมัติ (ไม่ต้องใช้ CSS)
+            scaleX={scale}
+            scaleY={scale}
+            
             ref={stageRef}
             onMouseDown={checkDeselect}
             onTouchStart={checkDeselect}
-            style={{ 
-                // ✅ บังคับใช้งาน Scale ตลอดเวลา ไม่โดนตัดขอบแน่นอน
-                transform: `scale(${scale})`, 
-                transformOrigin: 'center center',
-                backgroundColor: 'white'
-            }}
+            style={{ backgroundColor: 'white' }} 
           >
             <Layer>
               {/* พื้นหลัง */}
@@ -260,6 +260,12 @@ export const EditorCanvas = ({ readOnly = false, onStageRef }: EditorCanvasProps
               {!readOnly && selectedId && (
                 <Transformer
                   ref={trRef}
+                  // ✅ เพิ่ม 4 บรรทัดนี้ เพื่อให้จุดลากใหญ่ขึ้นในมือถือ
+                  anchorSize={typeof window !== 'undefined' && window.innerWidth < 768 ? 25 : 10} 
+                  anchorCornerRadius={3}
+                  borderStrokeWidth={1.5}
+                  padding={5}
+                  // ==========================
                   boundBoxFunc={(oldBox, newBox) => {
                     if (newBox.width < 20 || newBox.height < 20) return oldBox;
                     return newBox;

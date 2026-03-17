@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useEditorStore } from '../../stores/useEditorStore';
 import { 
-  FaAlignLeft, FaAlignCenter, FaAlignRight, FaTrash, FaDatabase, FaImage, FaSave, FaMagic, FaPlus, FaGripLines, FaCopy, FaBold
+  FaAlignLeft, FaAlignCenter, FaAlignRight, FaTrash, FaDatabase, FaImage, FaSave, FaMagic, FaPlus, FaGripLines, FaCopy, FaBold, FaArrowUp, FaArrowDown
 } from 'react-icons/fa';
 import { API_BASE_URL } from '../../config/api';
 import { AVAILABLE_FONTS, DEFAULT_STYLES } from '../../config/editorConfigs';
@@ -404,6 +404,30 @@ export const Properties = () => {
                                 {/* ไอคอนสำหรับลาก (Drag Handle) */}
                                 <div className="text-gray-300 px-1 cursor-grab active:cursor-grabbing hover:text-blue-500">
                                     <FaGripLines size={14} />
+                                </div>
+
+                                {/* ✅ ปุ่มลูกศร ขึ้น-ลง (สำหรับมือถือและคนชอบกด) */}
+                                <div className="flex flex-col gap-1 md:hidden text-gray-400">
+                                    <button 
+                                        onClick={() => {
+                                            if (index === 0) return;
+                                            const newColors = [...array];
+                                            [newColors[index - 1], newColors[index]] = [newColors[index], newColors[index - 1]];
+                                            updateElement(selectedElement.id, { style_config: { ...selectedElement.style_config, gradientColors: newColors }});
+                                        }} 
+                                        disabled={index === 0}
+                                        className="p-1 hover:text-blue-500 disabled:opacity-20 active:bg-gray-100 rounded"
+                                    ><FaArrowUp size={10} /></button>
+                                    <button 
+                                        onClick={() => {
+                                            if (index === array.length - 1) return;
+                                            const newColors = [...array];
+                                            [newColors[index + 1], newColors[index]] = [newColors[index], newColors[index + 1]];
+                                            updateElement(selectedElement.id, { style_config: { ...selectedElement.style_config, gradientColors: newColors }});
+                                        }}
+                                        disabled={index === array.length - 1}
+                                        className="p-1 hover:text-blue-500 disabled:opacity-20 active:bg-gray-100 rounded"
+                                    ><FaArrowDown size={10} /></button>
                                 </div>
                                 
                                 {/* กล่องเลือกสี */}
