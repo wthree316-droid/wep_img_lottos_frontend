@@ -1,68 +1,47 @@
-/**
- * API Configuration และ Helper Functions
- */
-
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
-/**
- * Generic API Client
- */
+// ✅ เพิ่ม Helper ฟังก์ชันสำหรับดึง Token
+const getHeaders = () => {
+  const token = localStorage.getItem('token'); // อย่าลืมเช็กว่าตอน Login คุณเซฟ Token ชื่ออะไร
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+  };
+};
+
 export const apiClient = {
-  /**
-   * GET Request
-   */
   get: async <T = any>(endpoint: string): Promise<T> => {
-    const res = await fetch(`${API_BASE_URL}${endpoint}`);
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({ detail: res.statusText }));
-      throw new Error(errorData.detail || `API Error: ${res.statusText}`);
-    }
+    const res = await fetch(`${API_BASE_URL}${endpoint}`, { headers: getHeaders() });
+    if (!res.ok) throw new Error(`API Error: ${res.statusText}`);
     return res.json();
   },
 
-  /**
-   * POST Request
-   */
   post: async <T = any>(endpoint: string, data: any): Promise<T> => {
     const res = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getHeaders(), // ✅ ใส่ Header ตรงนี้
       body: JSON.stringify(data)
     });
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({ detail: res.statusText }));
-      throw new Error(errorData.detail || `API Error: ${res.statusText}`);
-    }
+    if (!res.ok) throw new Error(`API Error: ${res.statusText}`);
     return res.json();
   },
 
-  /**
-   * PUT Request
-   */
   put: async <T = any>(endpoint: string, data: any): Promise<T> => {
     const res = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getHeaders(), // ✅ ใส่ Header ตรงนี้
       body: JSON.stringify(data)
     });
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({ detail: res.statusText }));
-      throw new Error(errorData.detail || `API Error: ${res.statusText}`);
-    }
+    if (!res.ok) throw new Error(`API Error: ${res.statusText}`);
     return res.json();
   },
 
-  /**
-   * DELETE Request
-   */
   delete: async <T = any>(endpoint: string): Promise<T> => {
     const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-      method: 'DELETE'
+      method: 'DELETE',
+      headers: getHeaders() // ✅ ใส่ Header ตรงนี้
     });
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({ detail: res.statusText }));
-      throw new Error(errorData.detail || `API Error: ${res.statusText}`);
-    }
+    if (!res.ok) throw new Error(`API Error: ${res.statusText}`);
     return res.json();
   }
 };

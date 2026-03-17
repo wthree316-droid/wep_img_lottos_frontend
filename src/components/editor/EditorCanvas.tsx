@@ -155,6 +155,7 @@ export const EditorCanvas = ({ readOnly = false, onStageRef }: EditorCanvasProps
                         width={w} height={h}
                         draggable={!readOnly}
                         onClick={() => !readOnly && selectElement(el.id)}
+                        onTap={() => !readOnly && selectElement(el.id)}
                         onDragEnd={(e: any) => {
                             updateElement(el.id, {
                                 pos_x: toPct(e.target.x(), canvasConfig.width),
@@ -260,12 +261,10 @@ export const EditorCanvas = ({ readOnly = false, onStageRef }: EditorCanvasProps
               {!readOnly && selectedId && (
                 <Transformer
                   ref={trRef}
-                  // ✅ เพิ่ม 4 บรรทัดนี้ เพื่อให้จุดลากใหญ่ขึ้นในมือถือ
-                  anchorSize={typeof window !== 'undefined' && window.innerWidth < 768 ? 25 : 10} 
+                  anchorSize={typeof window !== 'undefined' && window.innerWidth < 768 ? 10 : 10} 
                   anchorCornerRadius={3}
                   borderStrokeWidth={1.5}
                   padding={5}
-                  // ==========================
                   boundBoxFunc={(oldBox, newBox) => {
                     if (newBox.width < 20 || newBox.height < 20) return oldBox;
                     return newBox;

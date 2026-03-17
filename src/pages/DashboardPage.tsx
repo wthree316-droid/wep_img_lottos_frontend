@@ -410,7 +410,7 @@ export const DashboardPage = () => {
             <div className="flex items-center gap-3 overflow-x-auto pb-1 hide-scrollbar">
               <button 
                   onClick={handleOpenTemplateModal}
-                  className="flex items-center gap-2 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-100 text-purple-700 px-4 py-2 rounded-xl font-bold hover:shadow-md transition text-sm whitespace-nowrap"
+                  className="flex items-center gap-2 bg-linear-to-r from-purple-50 to-pink-50 border border-purple-100 text-purple-700 px-4 py-2 rounded-xl font-bold hover:shadow-md transition text-sm whitespace-nowrap"
               >
                   <FaPalette /> ธีมแม่พิมพ์
               </button>
@@ -463,7 +463,7 @@ export const DashboardPage = () => {
                         key={lotto.id} to={`/play/${lotto.id}`}
                         className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 p-4 border border-gray-100 group flex flex-col items-center text-center cursor-pointer relative overflow-hidden"
                     >
-                        <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-blue-50 to-indigo-50 mb-3 overflow-hidden border-2 border-white shadow-inner group-hover:scale-105 transition-transform duration-300 relative">
+                        <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-linear-to-br from-blue-50 to-indigo-50 mb-3 overflow-hidden border-2 border-white shadow-inner group-hover:scale-105 transition-transform duration-300 relative">
                             {lotto.templates?.background_url ? (
                                 <img src={lotto.templates.background_url} className="w-full h-full object-cover" />
                             ) : (
@@ -556,7 +556,7 @@ export const DashboardPage = () => {
                                     onClick={handleBatchDownload} 
                                     disabled={isZipping || selectedIds.size === 0} 
                                     className={`w-full py-4 rounded-xl font-bold text-white shadow-lg flex items-center justify-center gap-2 transition-all transform active:scale-95 ${
-                                        isZipping ? 'bg-gray-400 cursor-not-allowed shadow-none' : selectedIds.size === 0 ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none' : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 hover:shadow-purple-500/30'
+                                        isZipping ? 'bg-gray-400 cursor-not-allowed shadow-none' : selectedIds.size === 0 ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none' : 'bg-linear-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 hover:shadow-purple-500/30'
                                     }`}
                                 >
                                     {isZipping ? <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div> : <FaDownload />}
@@ -617,7 +617,7 @@ export const DashboardPage = () => {
             
             <div className="relative z-50 text-white text-center flex flex-col items-center max-w-md w-full px-4">
                 <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mb-6"></div>
-                <div className="text-2xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-400">
+                <div className="text-2xl font-bold mb-2 bg-clip-text text-transparent bg-linear-to-r from-purple-400 to-pink-400">
                     กำลังสร้างภาพความเร็วสูง... 🚀
                 </div>
                 <div className="text-sm font-medium text-gray-300 bg-white/10 px-4 py-2 rounded-full mb-8 backdrop-blur-sm shadow-inner">
@@ -654,7 +654,7 @@ export const DashboardPage = () => {
                                   <div className="aspect-9/16 bg-gray-100 relative">
                                       {t.background_url ? ( <img src={t.background_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" /> ) : ( <div className="flex items-center justify-center h-full text-gray-300 font-bold">NO IMAGE</div> )}
                                       
-                                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                      <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                                       
                                       {currentTemplateId === t.id && ( 
                                           <div className="absolute top-3 right-3 bg-purple-600 text-white rounded-full p-1.5 shadow-lg backdrop-blur-sm"> 
