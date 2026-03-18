@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import type { ReactNode } from 'react'; // ✅ แก้ Error 1: import type
+import type { ReactNode } from 'react'; 
 
 export interface User {
   id: string;
@@ -14,7 +14,7 @@ interface AuthContextType {
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
-  isAdmin: boolean; // ✅ ตัวช่วยเช็คว่าเป็นแอดมินไหม
+  isAdmin: boolean; 
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -48,9 +48,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw new Error(errorData.detail || 'Login failed');
       }
 
-      const userData = await res.json();
+      const responseData = await res.json();
+      
+      // ✅ ดึงข้อมูล user และ access_token ออกมาจาก response ของ Backend โฉมใหม่
+      const userData = responseData.user;
+      const token = responseData.access_token;
+
+      // ✅ เซฟข้อมูลลง State และ LocalStorage
       setUser(userData);
       localStorage.setItem('lotto_user', JSON.stringify(userData)); 
+      localStorage.setItem('token', token); // 🔐 เซฟ Token เก็บไว้ให้ api.ts ดึงไปใช้!
+      
     } catch (error) {
       throw error;
     }
@@ -59,7 +67,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = () => {
     setUser(null);
     localStorage.removeItem('lotto_user');
-    window.location.href = '/login'; // ดีดไปหน้า Login
+    localStorage.removeItem('token'); // 🔐 ลบ Token ทิ้งด้วยเพื่อความปลอดภัย
+    window.location.href = '/login'; 
   };
 
   // เช็คว่าเป็น admin หรือไม่
