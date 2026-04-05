@@ -1,1 +1,25 @@
 @import "tailwindcss";
+
+/* Custom Scrollbar for Black & Gold Theme */
+::-webkit-scrollbar {
+  width: 8px; /* ทำให้เล็กลง ดูทันสมัย */
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #050505; /* สีพื้นหลัง Scrollbar กลืนไปกับเว็บ */
+}
+
+::-webkit-scrollbar-thumb {
+  background: #262626; /* สีแถบเลื่อนปกติเป็นสีเทาเข้ม */
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #D4AF37; /* เมื่อเอาเมาส์ชี้ จะเรืองแสงเป็นสีทอง */
+}
+
+/* ป้องกันปัญหา Canvas แฟลชสีขาวตอนกำลังโหลดรูปภาพ */
+canvas {
+  background-color: transparent !important;
+}

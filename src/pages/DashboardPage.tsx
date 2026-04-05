@@ -63,10 +63,12 @@ const CountdownTimer = ({ targetDate }: { targetDate: string }) => {
     }, [targetDate]);
 
     return (
-        <span className={`text-[10px] flex items-center gap-1 px-2 py-0.5 rounded-full font-bold shadow-sm ${
-            isExpired ? 'bg-gray-100 text-gray-500' : 'bg-red-50 text-red-600 animate-pulse border border-red-100'
+        <span className={`text-[10px] flex items-center justify-center gap-1.5 px-3 py-1 rounded-full font-bold tracking-wider uppercase border shadow-inner transition-colors ${
+            isExpired 
+            ? 'bg-black/50 text-gray-600 border-gray-800' 
+            : 'bg-red-950/40 text-red-400 animate-pulse border-red-500/30 shadow-[0_0_10px_rgba(239,68,68,0.1)]'
         }`}>
-            <FaClock /> {timeLeft}
+            <FaClock size={10} /> {timeLeft}
         </span>
     );
 };
@@ -394,85 +396,130 @@ export const DashboardPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8f9fa] font-sans pb-20">
+    <div className="min-h-screen bg-[#050505] text-white font-sans pb-20 relative overflow-x-hidden">
       
-      <div className="bg-white/80 backdrop-blur-lg border-b border-gray-200 sticky top-0 z-40 shadow-sm">
+      {/* 🌌 Background Mandala (แบบจางๆ ให้ดูขลัง) */}
+      <div className="fixed top-[-10%] right-[-10%] w-[600px] h-[600px] opacity-[0.3] pointer-events-none z-0">
+        <svg viewBox="0 0 200 200" className="w-full h-full text-[#D4AF37] animate-spin-slow">
+          <circle cx="100" cy="100" r="90" fill="none" stroke="currentColor" strokeWidth="0.5" strokeDasharray="10 5" />
+          <circle cx="100" cy="100" r="70" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="5 5" />
+          <circle cx="100" cy="100" r="50" fill="none" stroke="currentColor" strokeWidth="2" />
+        </svg>
+      </div>
+
+      {/* 🧭 Navigation Bar (Glassmorphism) */}
+      <div className="bg-[#121212]/80 backdrop-blur-md border-b border-[#D4AF37]/20 sticky top-0 z-40 shadow-[0_4px_30px_rgba(0,0,0,0.5)]">
           <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <h1 className="text-xl md:text-2xl font-extrabold text-gray-800 tracking-tight flex items-center gap-2">
-                 เครื่องมือสร้างหวย <span className="text-2xl">🎰</span>
+              <h1 className="text-xl md:text-2xl font-black tracking-tight flex items-center gap-3">
+                 <div className="w-8 h-8 bg-gradient-to-tr from-[#BF953F] to-[#FCF6BA] rounded-md flex items-center justify-center text-black shadow-lg shadow-yellow-600/20">
+                   <FaLayerGroup size={16} />
+                 </div>
+                 <span className="bg-gradient-to-r from-[#FCF6BA] via-[#D4AF37] to-[#BF953F] bg-clip-text text-transparent uppercase">Lotto Studio</span>
               </h1>
-              <p className="text-xs md:text-sm text-gray-500 mt-0.5">
-                 ยินดีต้อนรับ, <span className="text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded-md">{user?.name || user?.username}</span>
+              <p className="text-xs md:text-sm text-gray-400 mt-1 flex items-center gap-1.5">
+                 ยินดีต้อนรับ, <span className="text-[#D4AF37] font-bold bg-[#D4AF37]/10 border border-[#D4AF37]/30 px-2 py-0.5 rounded-md">{user?.name || user?.username}</span>
               </p>
             </div>
             
             <div className="flex items-center gap-3 overflow-x-auto pb-1 hide-scrollbar">
               <button 
                   onClick={handleOpenTemplateModal}
-                  className="flex items-center gap-2 bg-linear-to-r from-purple-50 to-pink-50 border border-purple-100 text-purple-700 px-4 py-2 rounded-xl font-bold hover:shadow-md transition text-sm whitespace-nowrap"
+                  className="flex items-center gap-2 bg-[#1a1a1a] border border-[#D4AF37]/40 text-[#D4AF37] px-4 py-2 rounded-xl font-bold hover:bg-gradient-to-r hover:from-[#BF953F] hover:via-[#FCF6BA] hover:to-[#B38728] hover:text-black hover:border-transparent transition-all duration-300 text-sm whitespace-nowrap shadow-sm hover:shadow-[0_0_15px_rgba(212,175,55,0.4)]"
               >
                   <FaPalette /> ธีมแม่พิมพ์
               </button>
               {isAdmin && (
-                  <Link to="/admin/dashboard" className="flex items-center gap-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-xl font-bold hover:bg-gray-200 transition text-sm whitespace-nowrap">
+                  <Link to="/admin/dashboard" className="flex items-center gap-2 bg-black border border-gray-700 text-gray-300 px-4 py-2 rounded-xl font-bold hover:text-white hover:border-gray-500 transition text-sm whitespace-nowrap">
                     <FaCog /> แอดมิน
                   </Link>
               )}
-              <div className="h-8 w-px bg-gray-300 hidden md:block"></div>
+              <div className="h-8 w-px bg-[#D4AF37]/20 hidden md:block"></div>
               <LogoutButton />
             </div>
           </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 md:px-8 mt-8">
+      {/* 🌟 Main Content Container */}
+      <div className="max-w-7xl mx-auto px-4 md:px-8 mt-8 relative z-10">
         
-        <div className="flex flex-col lg:flex-row gap-4 mb-8 bg-white p-2 rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.04)] border border-gray-100">
-            <div className="flex bg-gray-100 p-1.5 rounded-xl flex-1 lg:max-w-md relative">
+        {/* 🎛️ จุดที่ 2: Control Panel (Toggle Mode & Search) */}
+        <div className="flex flex-col lg:flex-row gap-4 mb-8 bg-[#121212] p-2 rounded-2xl shadow-lg shadow-yellow-900/5 border border-[#D4AF37]/20">
+            
+            {/* 🔄 Mode Toggle (สลับโหมด) */}
+            <div className="flex bg-[#050505] p-1.5 rounded-xl flex-1 lg:max-w-md relative border border-[#D4AF37]/10">
                 <button 
                     onClick={() => setMode('single')}
-                    className={`flex-1 py-2.5 font-bold rounded-lg transition-all text-sm flex items-center justify-center gap-2 z-10 ${mode === 'single' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                    className={`flex-1 py-2.5 font-bold rounded-lg transition-all duration-300 text-sm flex items-center justify-center gap-2 z-10 ${
+                      mode === 'single' 
+                        ? 'bg-gradient-to-r from-[#BF953F] via-[#FCF6BA] to-[#B38728] text-black shadow-[0_0_15px_rgba(212,175,55,0.3)]' 
+                        : 'text-gray-500 hover:text-[#D4AF37]'
+                    }`}
                 >
                     🎯 เลือกทีละใบ
                 </button>
                 <button 
                     onClick={() => setMode('batch')}
-                    className={`flex-1 py-2.5 font-bold rounded-lg transition-all text-sm flex items-center justify-center gap-2 z-10 ${mode === 'batch' ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                    className={`flex-1 py-2.5 font-bold rounded-lg transition-all duration-300 text-sm flex items-center justify-center gap-2 z-10 ${
+                      mode === 'batch' 
+                        ? 'bg-gradient-to-r from-[#BF953F] via-[#FCF6BA] to-[#B38728] text-black shadow-[0_0_15px_rgba(212,175,55,0.3)]' 
+                        : 'text-gray-500 hover:text-[#D4AF37]'
+                    }`}
                 >
                     📦 เหมาเข่ง (Batch)
                 </button>
             </div>
 
-            <div className="relative flex-1">
-                <span className="absolute left-4 top-3.5 text-gray-400"><FaSearch /></span>
+            {/* 🔍 Search Bar (ช่องค้นหา) */}
+            <div className="relative flex-1 group">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#D4AF37]/40 group-focus-within:text-[#D4AF37] transition-colors">
+                  <FaSearch />
+                </span>
                 <input 
-                    type="text" placeholder="ค้นหาชื่อหวย..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-11 p-3 bg-gray-50 rounded-xl border border-transparent outline-none focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-50 transition-all"
+                    type="text" 
+                    placeholder="ค้นหาชื่อหวย..." 
+                    value={searchTerm} 
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-11 p-3 bg-[#050505] text-white placeholder-gray-600 rounded-xl border border-[#D4AF37]/20 outline-none focus:bg-[#1a1a1a] focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] transition-all shadow-inner"
                 />
             </div>
         </div>
 
+        {/* --- ส่วน Loading --- */}
         {loading ? (
-          <div className="text-center py-20 text-gray-400 font-bold animate-pulse">กำลังโหลดเมนู... ⏳</div>
+          <div className="flex flex-col items-center justify-center py-20 text-[#D4AF37]">
+            <div className="w-12 h-12 border-4 border-[#D4AF37]/30 border-t-[#D4AF37] rounded-full animate-spin mb-4"></div>
+            <p className="font-bold tracking-widest uppercase text-sm animate-pulse">กำลังโหลดเมนูมงคล... ⏳</p>
+          </div>
         ) : (
           <div className="animate-fade-in">
             {mode === 'single' && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-5">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
                     {filteredLotteries.map((lotto) => (
                     <Link 
                         key={lotto.id} to={`/play/${lotto.id}`}
-                        className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 p-4 border border-gray-100 group flex flex-col items-center text-center cursor-pointer relative overflow-hidden"
+                        className="bg-[#121212] rounded-2xl shadow-lg hover:shadow-[0_0_25px_rgba(212,175,55,0.2)] transition-all duration-300 transform hover:-translate-y-1.5 p-5 border border-[#D4AF37]/20 hover:border-[#D4AF37]/60 group flex flex-col items-center text-center cursor-pointer relative overflow-hidden"
                     >
-                        <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-linear-to-br from-blue-50 to-indigo-50 mb-3 overflow-hidden border-2 border-white shadow-inner group-hover:scale-105 transition-transform duration-300 relative">
+                        {/* แสงฟุ้งสีทองด้านหลังตอน Hover (Glow Effect) */}
+                        <div className="absolute inset-0 bg-gradient-to-b from-[#D4AF37]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
+
+                        {/* กรอบรูปวงกลม */}
+                        <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-[#0a0a0a] mb-4 overflow-hidden border-2 border-[#D4AF37]/30 group-hover:border-[#D4AF37] shadow-inner group-hover:scale-110 transition-all duration-500 relative flex items-center justify-center z-10">
                             {lotto.templates?.background_url ? (
                                 <img src={lotto.templates.background_url} className="w-full h-full object-cover" />
                             ) : (
-                                <div className="w-full h-full flex items-center justify-center text-3xl opacity-50">🎲</div>
+                                <div className="text-3xl opacity-30 grayscale group-hover:grayscale-0 transition-all">🎲</div>
                             )}
                         </div>
-                        <h3 className="font-bold text-gray-800 text-sm md:text-base group-hover:text-blue-600 line-clamp-2 leading-tight">{lotto.name}</h3>
+
+                        {/* ชื่อหวย */}
+                        <h3 className="font-bold text-gray-300 text-sm md:text-base group-hover:text-[#D4AF37] transition-colors line-clamp-2 leading-snug mb-3 z-10">
+                            {lotto.name}
+                        </h3>
+
+                        {/* เวลาปิดรับ */}
                         {lotto.closing_time && (
-                            <div className="mt-2">
+                            <div className="mt-auto z-10 w-full">
                                 <CountdownTimer targetDate={lotto.closing_time} />
                             </div>
                         )}
@@ -484,27 +531,32 @@ export const DashboardPage = () => {
             {mode === 'batch' && (
                 <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
                     
-                    <div className="w-full lg:w-[320px] bg-white p-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 lg:sticky lg:top-28 shrink-0">
-                        <h3 className="font-extrabold text-lg mb-5 flex items-center gap-2 text-gray-800 border-b pb-4">
-                            <FaCog className="text-purple-600" /> ตั้งค่า & ดาวน์โหลด
+                    {/* 🎛️ แผงควบคุมด้านซ้าย (Left Panel) */}
+                    <div className="w-full lg:w-[320px] bg-[#121212] p-6 rounded-3xl shadow-2xl border border-[#D4AF37]/20 lg:sticky lg:top-28 shrink-0 relative overflow-hidden">
+                        {/* แสงฟุ้งประดับตกแต่งมุมกล่อง */}
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-[#D4AF37] opacity-5 blur-[50px] pointer-events-none"></div>
+
+                        <h3 className="font-black text-lg mb-5 flex items-center gap-2 text-white border-b border-[#D4AF37]/20 pb-4 uppercase tracking-wider">
+                            <FaCog className="text-[#D4AF37]" /> ตั้งค่า & ดาวน์โหลด
                         </h3>
                         
-                        <div className="space-y-5">
-                            <div className="bg-purple-50/50 p-4 rounded-2xl border border-purple-100">
+                        <div className="space-y-6 relative z-10">
+                            {/* ส่วนบันทึกกลุ่มหวย */}
+                            <div className="bg-[#050505] p-4 rounded-2xl border border-[#D4AF37]/10">
                                 <div className="flex justify-between items-center mb-3">
-                                    <label className="text-sm font-bold text-purple-900 flex items-center gap-1.5">
-                                        <FaBookmark className="text-purple-500"/> กลุ่มหวยประจำ
+                                    <label className="text-sm font-bold text-[#D4AF37] flex items-center gap-1.5 uppercase tracking-wide">
+                                        <FaBookmark /> กลุ่มหวยประจำ
                                     </label>
                                     <button 
                                         onClick={handleSaveGroup}
-                                        className="text-[10px] bg-white border border-purple-200 text-purple-700 px-2 py-1 rounded shadow-sm hover:bg-purple-100 transition font-bold"
+                                        className="text-[10px] bg-[#1a1a1a] border border-[#D4AF37]/30 text-[#D4AF37] px-2 py-1 rounded shadow-sm hover:bg-[#D4AF37] hover:text-black transition font-bold"
                                     >
                                         + บันทึกกลุ่ม
                                     </button>
                                 </div>
                                 
                                 {savedGroups.length === 0 ? (
-                                    <div className="text-xs text-gray-400 text-center py-2 bg-white/50 rounded-lg border border-dashed border-gray-200">
+                                    <div className="text-xs text-gray-600 text-center py-4 bg-[#121212] rounded-lg border border-dashed border-gray-800">
                                         ยังไม่มีกลุ่มที่บันทึกไว้<br/>(เลือกหวยด้านขวาแล้วกดบันทึก)
                                     </div>
                                 ) : (
@@ -513,13 +565,13 @@ export const DashboardPage = () => {
                                             <div key={g.id} className="relative group">
                                                 <button 
                                                     onClick={() => handleApplyGroup(g)}
-                                                    className="bg-white border border-purple-200 text-purple-700 text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm hover:bg-purple-600 hover:text-white transition pr-7"
+                                                    className="bg-[#1a1a1a] border border-[#D4AF37]/20 text-gray-300 text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm hover:border-[#D4AF37] hover:text-[#D4AF37] transition pr-7"
                                                 >
-                                                    {g.name} <span className="opacity-70 font-normal">({g.lottoIds.length})</span>
+                                                    {g.name} <span className="opacity-60 font-normal">({g.lottoIds.length})</span>
                                                 </button>
                                                 <button 
                                                     onClick={(e) => handleDeleteGroup(e, g.id)}
-                                                    className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition p-0.5"
+                                                    className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition p-0.5"
                                                     title="ลบกลุ่มนี้"
                                                 >
                                                     <FaTimes size={10}/>
@@ -530,55 +582,64 @@ export const DashboardPage = () => {
                                 )}
                             </div>
 
-                            <div className="space-y-3">
+                            {/* ส่วนตั้งค่า วันที่ & Seed */}
+                            <div className="space-y-4">
                                 <div>
-                                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">วันที่บนภาพ</label>
-                                    <div className="flex items-center gap-2 border border-gray-200 p-2.5 rounded-xl bg-gray-50 focus-within:ring-2 ring-blue-100 transition">
-                                        <FaCalendarAlt className="text-gray-400 shrink-0" />
-                                        <input type="date" value={commonDate} onChange={e => setCommonDate(e.target.value)} className="bg-transparent outline-none w-full text-sm font-medium text-gray-700"/>
+                                    <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5 block">วันที่บนภาพ</label>
+                                    <div className="flex items-center gap-2 border border-[#D4AF37]/20 p-3 rounded-xl bg-[#0a0a0a] focus-within:border-[#D4AF37] focus-within:ring-1 ring-[#D4AF37] transition">
+                                        <FaCalendarAlt className="text-[#D4AF37]/60 shrink-0" />
+                                        {/* ใช้ [color-scheme:dark] เพื่อให้ Datepicker ของ Browser เป็นธีมมืด */}
+                                        <input type="date" value={commonDate} onChange={e => setCommonDate(e.target.value)} className="bg-transparent outline-none w-full text-sm font-medium text-white [color-scheme:dark]"/>
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">เลขตั้งต้น (Seed)</label>
-                                    <div className="flex items-center gap-2 border border-gray-200 p-2.5 rounded-xl bg-gray-50 focus-within:ring-2 ring-blue-100 transition">
-                                        <FaMagic className="text-gray-400 shrink-0" />
-                                        <input type="text" value={commonSeed} onChange={e => setCommonSeed(e.target.value)} placeholder="สุ่มอัตโนมัติถ้าปล่อยว่าง" className="bg-transparent outline-none w-full text-sm font-medium text-gray-700"/>
+                                    <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5 block">เลขตั้งต้น (Seed)</label>
+                                    <div className="flex items-center gap-2 border border-[#D4AF37]/20 p-3 rounded-xl bg-[#0a0a0a] focus-within:border-[#D4AF37] focus-within:ring-1 ring-[#D4AF37] transition">
+                                        <FaMagic className="text-[#D4AF37]/60 shrink-0" />
+                                        <input type="text" value={commonSeed} onChange={e => setCommonSeed(e.target.value)} placeholder="สุ่มอัตโนมัติถ้าปล่อยว่าง" className="bg-transparent outline-none w-full text-sm font-medium text-white placeholder-gray-700"/>
                                     </div>
                                 </div>
                             </div>
                             
-                            <div className="pt-5 border-t border-gray-100 mt-2">
-                                <div className="flex justify-between items-center text-sm mb-3 bg-gray-50 p-2 rounded-lg border border-gray-100">
-                                    <span className="text-gray-600 font-medium">เลือกหวยแล้ว:</span>
-                                    <span className="font-bold text-purple-600 text-base">{selectedIds.size} รายการ</span>
+                            {/* ส่วนสรุปผลและปุ่มดาวน์โหลด */}
+                            <div className="pt-5 border-t border-[#D4AF37]/10 mt-2">
+                                <div className="flex justify-between items-center text-sm mb-4 bg-[#0a0a0a] p-3 rounded-xl border border-[#D4AF37]/10">
+                                    <span className="text-gray-400 font-medium">เลือกหวยแล้ว:</span>
+                                    <span className="font-bold text-[#D4AF37] text-lg">{selectedIds.size} รายการ</span>
                                 </div>
                                 <button 
                                     onClick={handleBatchDownload} 
                                     disabled={isZipping || selectedIds.size === 0} 
-                                    className={`w-full py-4 rounded-xl font-bold text-white shadow-lg flex items-center justify-center gap-2 transition-all transform active:scale-95 ${
-                                        isZipping ? 'bg-gray-400 cursor-not-allowed shadow-none' : selectedIds.size === 0 ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none' : 'bg-linear-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 hover:shadow-purple-500/30'
+                                    className={`w-full py-4 rounded-xl font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-300 transform active:scale-95 ${
+                                        isZipping 
+                                        ? 'bg-[#1a1a1a] text-gray-600 border border-gray-800 cursor-not-allowed shadow-none' 
+                                        : selectedIds.size === 0 
+                                            ? 'bg-[#0a0a0a] text-gray-700 border border-gray-800 cursor-not-allowed shadow-none' 
+                                            : 'bg-gradient-to-r from-[#BF953F] via-[#FCF6BA] to-[#B38728] text-black hover:brightness-110 shadow-[0_0_20px_rgba(212,175,55,0.3)]'
                                     }`}
                                 >
-                                    {isZipping ? <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div> : <FaDownload />}
+                                    {isZipping ? <div className="animate-spin h-5 w-5 border-2 border-gray-600 border-t-[#D4AF37] rounded-full"></div> : <FaDownload />}
                                     {isZipping ? 'กำลังประมวลผล...' : 'ดาวน์โหลด ZIP'}
                                 </button>
                             </div>
                         </div>
                     </div>
 
+                    {/* 📝 รายการหวยด้านขวา (Right Panel) */}
                     <div className="flex-1 w-full">
-                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-2 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                            <h3 className="font-bold text-gray-700 flex items-center gap-2">
-                                <FaLayerGroup className="text-blue-500"/> ติ๊กเลือกหวยที่ต้องการสร้าง
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-5 gap-3 bg-[#121212] p-4 rounded-xl shadow-lg border border-[#D4AF37]/20">
+                            <h3 className="font-bold text-white flex items-center gap-2">
+                                <FaLayerGroup className="text-[#D4AF37]"/> ติ๊กเลือกหวยที่ต้องการสร้าง
                             </h3>
                             <button 
                                 onClick={toggleAll} 
-                                className="text-sm bg-blue-50 text-blue-600 font-bold px-3 py-1.5 rounded-lg hover:bg-blue-100 transition self-start sm:self-auto"
+                                className="text-xs bg-[#1a1a1a] text-[#D4AF37] border border-[#D4AF37]/30 font-bold px-4 py-2 rounded-lg hover:bg-[#D4AF37] hover:text-black transition-colors self-start sm:self-auto uppercase tracking-wider"
                             >
                                 {selectedIds.size === filteredLotteries.length ? 'ยกเลิกทั้งหมด' : 'เลือกทั้งหมด (Select All)'}
                             </button>
                         </div>
                         
+                        {/* ตารางกล่องหวยให้กดเลือก */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
                             {filteredLotteries.map((lotto) => {
                                 const isSelected = selectedIds.has(lotto.id);
@@ -586,17 +647,17 @@ export const DashboardPage = () => {
                                     <div 
                                         key={lotto.id} 
                                         onClick={() => toggleSelection(lotto.id)} 
-                                        className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all duration-200 flex items-center gap-3 relative overflow-hidden ${
+                                        className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-300 flex items-center gap-3 relative overflow-hidden group ${
                                             isSelected 
-                                            ? 'border-purple-500 bg-purple-50/50 shadow-sm transform scale-[1.02]' 
-                                            : 'bg-white hover:border-gray-300 hover:shadow-md border-gray-100'
+                                            ? 'border-[#D4AF37] bg-[#D4AF37]/10 shadow-[0_0_15px_rgba(212,175,55,0.15)] transform scale-[1.02]' 
+                                            : 'bg-[#121212] border-[#D4AF37]/10 hover:border-[#D4AF37]/40 hover:bg-[#1a1a1a]'
                                         }`}
                                     >
-                                        <div className={`text-2xl transition-colors ${isSelected ? 'text-purple-600' : 'text-gray-200 group-hover:text-gray-300'}`}>
+                                        <div className={`text-2xl transition-colors ${isSelected ? 'text-[#D4AF37]' : 'text-gray-700 group-hover:text-gray-500'}`}>
                                             {isSelected ? <FaCheckSquare /> : <FaSquare />}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <h4 className={`font-bold truncate text-sm ${isSelected ? 'text-purple-900' : 'text-gray-700'}`}>
+                                            <h4 className={`font-bold truncate text-sm transition-colors ${isSelected ? 'text-[#D4AF37]' : 'text-gray-300'}`}>
                                                 {lotto.name}
                                             </h4>
                                         </div>
@@ -611,67 +672,112 @@ export const DashboardPage = () => {
         )}
       </div>
 
+      {/* 🚀 1. ป๊อปอัป Loading (ตอนกำลังประมวลผลเหมาเข่ง) */}
       {isZipping && (
-        <div className="fixed inset-0 z-9999 flex flex-col items-center justify-center backdrop-blur-md">
-            <div className="absolute inset-0 bg-gray-900/90 z-40"></div>
+        <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center backdrop-blur-md">
+            <div className="absolute inset-0 bg-[#050505]/90 z-40"></div>
             
             <div className="relative z-50 text-white text-center flex flex-col items-center max-w-md w-full px-4">
-                <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mb-6"></div>
-                <div className="text-2xl font-bold mb-2 bg-clip-text text-transparent bg-linear-to-r from-purple-400 to-pink-400">
-                    กำลังสร้างภาพความเร็วสูง... 🚀
+                {/* วงแหวน Loading สีทอง */}
+                <div className="relative w-20 h-20 mb-8">
+                    <div className="absolute inset-0 border-4 border-[#D4AF37]/20 rounded-full"></div>
+                    <div className="absolute inset-0 border-4 border-[#D4AF37] border-t-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(212,175,55,0.5)]"></div>
+                    {/* ไอคอนสายฟ้าตรงกลาง */}
+                    <div className="absolute inset-0 flex items-center justify-center text-[#FCF6BA] animate-pulse">
+                        <FaMagic size={24} />
+                    </div>
                 </div>
-                <div className="text-sm font-medium text-gray-300 bg-white/10 px-4 py-2 rounded-full mb-8 backdrop-blur-sm shadow-inner">
+
+                <div className="text-3xl font-black mb-3 bg-clip-text text-transparent bg-gradient-to-r from-[#BF953F] via-[#FCF6BA] to-[#B38728] uppercase tracking-widest drop-shadow-[0_2px_10px_rgba(212,175,55,0.4)]">
+                    กำลังสร้างภาพ...
+                </div>
+                
+                <div className="text-sm font-bold text-[#D4AF37] bg-[#D4AF37]/10 px-6 py-2.5 rounded-full mb-8 backdrop-blur-sm shadow-[inset_0_0_10px_rgba(212,175,55,0.1)] border border-[#D4AF37]/30">
                     {progress}
                 </div>
                 
-                <p className="text-xs text-gray-400 mt-6 bg-black/50 px-3 py-1.5 rounded-lg border border-white/10">
-                    ⚠️ กรุณาอย่าปิดหน้าต่างนี้จนกว่าจะดาวน์โหลดสำเร็จ
+                <p className="text-xs text-gray-500 mt-6 bg-black/80 px-4 py-2 rounded-xl border border-red-900/30 flex items-center gap-2">
+                    <span className="text-red-500 animate-pulse">⚠️</span> กรุณาอย่าปิดหน้าต่างนี้จนกว่าจะดาวน์โหลดสำเร็จ
                 </p>
             </div>
         </div>
       )}
 
+      {/* 🎨 2. ป๊อปอัป เลือกธีมแม่พิมพ์ (Template Modal) */}
       {isTemplateModalOpen && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-              <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl flex flex-col overflow-hidden max-h-[90vh] animate-fade-in">
-                  <div className="flex justify-between items-center p-5 md:p-6 border-b border-gray-100 bg-gray-50/50">
-                      <h3 className="text-lg md:text-xl font-bold text-gray-800 flex items-center gap-3">
-                          <div className="bg-purple-100 p-2 rounded-lg text-purple-600"><FaPalette /></div>
-                          เลือกธีมแม่พิมพ์ที่คุณต้องการ
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+              <div className="bg-[#121212] rounded-3xl shadow-[0_0_40px_rgba(212,175,55,0.15)] border border-[#D4AF37]/30 w-full max-w-4xl flex flex-col overflow-hidden max-h-[90vh] animate-fade-in relative">
+                  
+                  {/* แสงฟุ้งพื้นหลัง Modal */}
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-32 bg-[#D4AF37] opacity-10 blur-[60px] pointer-events-none"></div>
+
+                  <div className="flex justify-between items-center p-5 md:p-6 border-b border-[#D4AF37]/20 bg-[#0a0a0a]/50 relative z-10">
+                      <h3 className="text-lg md:text-xl font-bold text-white flex items-center gap-3">
+                          <div className="bg-gradient-to-br from-[#BF953F] to-[#FCF6BA] p-2 rounded-lg text-black shadow-lg shadow-yellow-600/20">
+                              <FaPalette />
+                          </div>
+                          เลือกธีมแม่พิมพ์นำโชค
                       </h3>
-                      <button onClick={() => setIsTemplateModalOpen(false)} className="text-gray-400 hover:text-red-500 bg-white p-2 rounded-full shadow-sm border border-gray-200 transition">
+                      <button onClick={() => setIsTemplateModalOpen(false)} className="text-gray-500 hover:text-[#D4AF37] bg-black p-2 rounded-full border border-gray-800 hover:border-[#D4AF37]/50 transition-all">
                           <FaTimes />
                       </button>
                   </div>
                   
-                  <div className="flex-1 overflow-y-auto p-5 md:p-6 bg-gray-50">
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-                          {myTemplates.map(t => (
-                              <div 
-                                key={t.id} onClick={() => handleSelectTemplate(t.id)} 
-                                className={`bg-white rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-xl relative group ${currentTemplateId === t.id ? 'ring-4 ring-purple-500 shadow-purple-500/20 scale-[1.02]' : 'border-2 border-transparent hover:border-gray-300'}`}
-                              >
-                                  <div className="aspect-9/16 bg-gray-100 relative">
-                                      {t.background_url ? ( <img src={t.background_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" /> ) : ( <div className="flex items-center justify-center h-full text-gray-300 font-bold">NO IMAGE</div> )}
-                                      
-                                      <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                                      
-                                      {currentTemplateId === t.id && ( 
-                                          <div className="absolute top-3 right-3 bg-purple-600 text-white rounded-full p-1.5 shadow-lg backdrop-blur-sm"> 
-                                              <FaCheck size={14} /> 
-                                          </div> 
-                                      )}
-                                  </div>
-                                  <div className="p-3 bg-white absolute bottom-0 left-0 right-0 z-10 border-t border-gray-100">
-                                      <h4 className="font-bold text-sm text-gray-800 truncate text-center">{t.name}</h4>
-                                  </div>
-                              </div>
-                          ))}
+                  <div className="flex-1 overflow-y-auto p-5 md:p-8 bg-[#050505] relative z-10 custom-scrollbar">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-6">
+                          {myTemplates.map(t => {
+                              const isActive = currentTemplateId === t.id;
+                              return (
+                                <div 
+                                    key={t.id} onClick={() => handleSelectTemplate(t.id)} 
+                                    className={`bg-[#1a1a1a] rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 hover:-translate-y-1 relative group ${
+                                        isActive 
+                                        ? 'ring-2 ring-[#D4AF37] shadow-[0_0_20px_rgba(212,175,55,0.3)] scale-[1.02]' 
+                                        : 'border border-[#D4AF37]/10 hover:border-[#D4AF37]/50'
+                                    }`}
+                                >
+                                    <div className="aspect-[9/16] bg-[#0a0a0a] relative flex items-center justify-center">
+                                        {t.background_url ? ( 
+                                            <img src={t.background_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" /> 
+                                        ) : ( 
+                                            <div className="flex flex-col items-center justify-center text-gray-700 font-bold opacity-50">
+                                                <FaLayerGroup size={24} className="mb-2" />
+                                                <span className="text-xs">NO IMAGE</span>
+                                            </div> 
+                                        )}
+                                        
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent opacity-80 group-hover:opacity-100 transition-opacity"></div>
+                                        
+                                        {isActive && ( 
+                                            <div className="absolute top-3 right-3 bg-gradient-to-tr from-[#BF953F] to-[#FCF6BA] text-black rounded-full p-1.5 shadow-[0_0_15px_rgba(212,175,55,0.5)] z-10"> 
+                                                <FaCheck size={14} /> 
+                                            </div> 
+                                        )}
+
+                                        <div className="p-4 absolute bottom-0 left-0 right-0 z-10 text-center">
+                                            <h4 className={`font-bold text-sm truncate transition-colors ${isActive ? 'text-[#D4AF37]' : 'text-gray-300 group-hover:text-white'}`}>
+                                                {t.name}
+                                            </h4>
+                                        </div>
+                                    </div>
+                                </div>
+                              )
+                          })}
                       </div>
                   </div>
               </div>
           </div>
       )}
+    {/* Animation Style */}
+      <style>{`
+        @keyframes spin-slow {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .animate-spin-slow {
+          animation: spin-slow 120s linear infinite;
+        }
+      `}</style>
     </div>
   );
 };
