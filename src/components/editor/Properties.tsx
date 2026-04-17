@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useEditorStore } from '../../stores/useEditorStore';
 import { 
-  FaAlignLeft, FaAlignCenter, FaAlignRight, FaTrash, FaDatabase, FaImage, FaSave, FaMagic, FaPlus, FaGripLines, FaCopy, FaBold, FaArrowUp, FaArrowDown
+  FaAlignLeft, FaAlignCenter, FaAlignRight, FaTrash, FaDatabase, FaImage, FaSave, FaMagic, FaPlus, FaGripLines, FaCopy, FaBold, FaArrowUp, FaArrowDown, FaCheck
 } from 'react-icons/fa';
 import { API_BASE_URL } from '../../config/api';
 import { AVAILABLE_FONTS, DEFAULT_STYLES } from '../../config/editorConfigs';
+import toast from 'react-hot-toast';
 
-// --- (Component ย่อยสำหรับ StyleEffectControl เหมือนเดิม) ---
+
 const StyleEffectControl = ({ label, value, onChange }: { label: string, value?: string, onChange: (val: string) => void }) => {
     return (
         <div className="space-y-2">
@@ -37,6 +38,23 @@ export const Properties = () => {
 
   const { elements, selectedId, updateElement, removeElement, canvasConfig, setCanvasSize, backgroundImage, setBackgroundImage, updateAllElementsStyle } = useEditorStore();
   
+  // ✅ เพิ่ม Local State สำหรับเก็บค่าที่กำลังพิมพ์
+  const [tempSize, setTempSize] = useState({ width: canvasConfig.width, height: canvasConfig.height });
+
+  // เมื่อ canvasConfig ใน Store เปลี่ยน (เช่น ตอนโหลดแม่พิมพ์ใหม่) ให้ Sync ค่ามาที่นี่ด้วย
+  useEffect(() => {
+    setTempSize({ width: canvasConfig.width, height: canvasConfig.height });
+  }, [canvasConfig.width, canvasConfig.height]);
+
+  const handleApplySize = () => {
+    // ยืนยันค่า: ต้องมากกว่า 0 และไม่ใช่ค่าว่าง
+    const w = Math.max(10, tempSize.width || 0);
+    const h = Math.max(10, tempSize.height || 0);
+    setCanvasSize(w, h);
+    setTempSize({ width: w, height: h });
+    toast.success("ปรับขนาดพื้นที่วาดเรียบร้อย");
+  };
+
   const selectedElement = elements.find((el) => el.id === selectedId);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -117,29 +135,51 @@ export const Properties = () => {
 
   if (!selectedElement) {
     return (
-        // ... (หน้าตอนยังไม่เลือกกล่อง เหมือนเดิม) ...
-      <div className="w-80 bg-white border-l border-gray-200 flex flex-col h-full shadow-lg z-20">
-        <div className="p-4 border-b border-gray-100 bg-gray-50">
-          <h2 className="font-bold text-gray-700 text-lg flex items-center gap-2"><FaImage className="text-gray-500" />ตั้งค่าแม่พิมพ์</h2>
-        </div>
-        <div className="p-6 flex flex-col gap-6">
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-gray-500 uppercase">ขนาด (กว้าง x สูง)</label>
-            <div className="flex gap-2">
-              <input type="number" value={canvasConfig.width} onChange={(e) => setCanvasSize(parseInt(e.target.value), canvasConfig.height)} className="w-full p-2 border border-gray-200 rounded text-sm" />
-              <span className="text-gray-400 self-center">x</span>
-              <input type="number" value={canvasConfig.height} onChange={(e) => setCanvasSize(canvasConfig.width, parseInt(e.target.value))} className="w-full p-2 border border-gray-200 rounded text-sm" />
+
+        <div className="w-80 bg-white border-l border-gray-200 flex flex-col h-full shadow-lg z-20">
+            <div className="p-4 border-b border-gray-100 bg-gray-50">
+                <h2 className="font-bold text-gray-700 text-lg flex items-center gap-2"><FaImage className="text-gray-500" />ตั้งค่าแม่พิมพ์</h2>
             </div>
-          </div>
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-gray-500 uppercase">รูปพื้นหลัง</label>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:bg-gray-50 transition relative">
-                {isUploading ? <span className="text-sm text-blue-500">กำลังอัปโหลด... ⏳</span> : <><span className="text-sm text-gray-500">คลิกเพื่อเลือกรูป</span><input type="file" accept="image/*" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" /></>}
+            <div className="p-6 flex flex-col gap-6">
+                <div className="space-y-2">
+                    <label className="text-xs font-bold text-gray-500 uppercase">ขนาด (กว้าง x สูง)</label>
+                    <div className="flex gap-2">
+                        <input 
+                            type="number" 
+                            value={tempSize.width === 0 ? '' : tempSize.width} 
+                            onChange={(e) => setTempSize({ ...tempSize, width: parseInt(e.target.value) || 0 })}
+                            className="w-full p-2 border border-gray-200 rounded text-sm focus:ring-2 focus:ring-blue-500" 
+                            placeholder="กว้าง"
+                        />
+                        <span className="text-gray-400 self-center">x</span>
+                        <input 
+                            type="number" 
+                            value={tempSize.height === 0 ? '' : tempSize.height} 
+                            onChange={(e) => setTempSize({ ...tempSize, height: parseInt(e.target.value) || 0 })}
+                            className="w-full p-2 border border-gray-200 rounded text-sm focus:ring-2 focus:ring-blue-500" 
+                            placeholder="สูง"
+                        />
+                    </div>
+                    
+                    {/* ✅ เพิ่มปุ่มยืนยันขนาด (จะโชว์เฉพาะตอนค่าไม่ตรงกับ Store) */}
+                    {(tempSize.width !== canvasConfig.width || tempSize.height !== canvasConfig.height) && (
+                    <button 
+                        onClick={handleApplySize}
+                        className="w-full mt-2 bg-blue-600 text-white py-1.5 rounded-lg text-xs font-bold hover:bg-blue-700 transition-all flex items-center justify-center gap-1 shadow-md animate-pulse"
+                    >
+                        <FaCheck /> ยืนยันขนาด
+                    </button>
+                    )}
+                </div>
+                <div className="space-y-2">
+                    <label className="text-xs font-bold text-gray-500 uppercase">รูปพื้นหลัง</label>
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:bg-gray-50 transition relative">
+                        {isUploading ? <span className="text-sm text-blue-500">กำลังอัปโหลด... ⏳</span> : <><span className="text-sm text-gray-500">คลิกเพื่อเลือกรูป</span><input type="file" accept="image/*" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" /></>}
+                    </div>
+                    <input type="text" value={backgroundImage || ''} onChange={(e) => setBackgroundImage(e.target.value)} className="w-full p-2 border border-gray-200 rounded text-sm text-gray-400 mt-2" placeholder="หรือใส่ URL ตรงนี้..." />
+                </div>
             </div>
-            <input type="text" value={backgroundImage || ''} onChange={(e) => setBackgroundImage(e.target.value)} className="w-full p-2 border border-gray-200 rounded text-sm text-gray-400 mt-2" placeholder="หรือใส่ URL ตรงนี้..." />
-          </div>
         </div>
-      </div>
     );
   }
 
@@ -250,7 +290,7 @@ export const Properties = () => {
                 {/* 1. ขนาดตัวอักษร (Font Size) */}
                 <div className="space-y-2">
                     <div className="flex justify-between items-center">
-                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">ขนาด (px)</label>
+                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">ขนาด</label>
                         <span className="text-xs text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded">
                             {selectedElement.style_config.fontSize}
                         </span>
@@ -258,9 +298,18 @@ export const Properties = () => {
                     <input
                         type="range" min="12" max="300" step="1"
                         value={selectedElement.style_config.fontSize}
-                        onChange={(e) => updateElement(selectedElement.id, { 
-                            style_config: { ...selectedElement.style_config, fontSize: parseInt(e.target.value) } 
-                        })}
+                        onChange={(e) => {
+                            // ✅ Fix: คำนวณอัตราส่วนการขยาย เพื่อให้กล่องขยายตามตัวอักษร
+                            const newFontSize = parseInt(e.target.value);
+                            const oldFontSize = selectedElement.style_config.fontSize || 1;
+                            const scaleRatio = newFontSize / oldFontSize; 
+
+                            updateElement(selectedElement.id, { 
+                                width: selectedElement.width * scaleRatio,   // ขยายกล่องกว้างขึ้น
+                                height: selectedElement.height * scaleRatio, // ขยายกล่องสูงขึ้น
+                                style_config: { ...selectedElement.style_config, fontSize: newFontSize } 
+                            });
+                        }}
                         className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
                     />
 
@@ -314,6 +363,15 @@ export const Properties = () => {
                 {/* 3. เอฟเฟกต์ ขอบ และ เงา (Stroke & Shadow) */}
                 <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-5">
                     <h3 className="text-xs font-bold text-gray-600 border-b pb-2">เอฟเฟกต์ 🎨</h3>
+
+                    {/* เลือกสีพื้นหลังข้อความ */}
+                    <StyleEffectControl 
+                        label="สีพื้นหลังข้อความ" 
+                        value={selectedElement.style_config.backgroundColor}
+                        onChange={(color) => updateElement(selectedElement.id, { 
+                            style_config: { ...selectedElement.style_config, backgroundColor: color } 
+                        })}
+                    />
                     
                     {/* ขอบ (Stroke) */}
                     <div className="space-y-3">
@@ -535,13 +593,48 @@ export const Properties = () => {
 
         {/* Delete */}
         <div className="pt-4 border-t border-gray-100 mt-auto">
-          <button
-            onClick={() => removeElement(selectedElement.id)}
-            className="w-full flex items-center justify-center gap-2 p-3 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition font-medium text-sm"
-          >
-            <FaTrash size={14} />
-            ลบกล่องนี้
-          </button>
+
+            {/* ✅ Fix ข้อ 9: โซนปรับแต่งพิเศษสำหรับ QR Code */}
+            {selectedElement.type === 'qr_code' && (
+                <div className="flex flex-col gap-6 border-t border-gray-100 pt-4 mt-2">
+                    <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-5">
+                        <h3 className="text-xs font-bold text-gray-600 border-b pb-2">กรอบรูป QR Code 🔲</h3>
+                        <StyleEffectControl 
+                            label="สีเส้นขอบ" 
+                            value={selectedElement.style_config.stroke}
+                            onChange={(color) => updateElement(selectedElement.id, { 
+                                style_config: { ...selectedElement.style_config, stroke: color } 
+                            })}
+                        />
+                        {selectedElement.style_config.stroke && (
+                            <div className="bg-white p-2 rounded border border-gray-200 space-y-2">
+                                <div className="flex justify-between">
+                                    <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">ความหนาขอบ</label>
+                                    <span className="text-[10px] text-blue-600 font-bold">
+                                        {selectedElement.style_config.strokeWidth || 1} px
+                                    </span>
+                                </div>
+                                <input
+                                    type="range" min="1" max="20" step="1"
+                                    value={selectedElement.style_config.strokeWidth || 1}
+                                    onChange={(e) => updateElement(selectedElement.id, { 
+                                        style_config: { ...selectedElement.style_config, strokeWidth: parseInt(e.target.value) } 
+                                    })}
+                                    className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                                />
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            <button
+                onClick={() => removeElement(selectedElement.id)}
+                className="w-full flex items-center justify-center gap-2 p-3 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition font-medium text-sm"
+            >
+                <FaTrash size={14} />
+                ลบกล่องนี้
+            </button>
         </div>
 
       </div>

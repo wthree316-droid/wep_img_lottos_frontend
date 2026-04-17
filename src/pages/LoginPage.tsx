@@ -31,7 +31,7 @@ export const LoginPage = () => {
       
       {/* 🌌 Layer 1: Background Mandala Pattern (Thai Contemporary) */}
       <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none">
-        <div className="relative w-[600px] h-[600px] animate-spin-slow">
+        <div className="relative w-150 h-150 animate-spin-slow">
           {/* สร้างวงกลมซ้อนกันเป็นลาย Mandala ด้วย SVG */}
           <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" className="w-full h-full text-[#D4AF37]">
             <circle cx="100" cy="100" r="90" fill="none" stroke="currentColor" strokeWidth="0.5" strokeDasharray="10 5" />
@@ -43,22 +43,22 @@ export const LoginPage = () => {
           </svg>
         </div>
         {/* แสงฟุ้งสีทอง (Golden Glow) หลังการ์ด */}
-        <div className="absolute w-[400px] h-[400px] bg-[#D4AF37] rounded-full blur-[120px] opacity-10"></div>
+        <div className="absolute w-100 h-100 bg-[#D4AF37] rounded-full blur-[120px] opacity-10"></div>
       </div>
 
       {/* 💳 Layer 2: The Golden Metallic Card */}
       <div className="relative z-10 w-full max-w-sm px-4">
-        <div className="bg-gradient-to-br from-[#BF953F] via-[#FCF6BA] to-[#B38728] p-[2px] rounded-2xl shadow-[0_0_40px_rgba(191,149,63,0.3)]">
+        <div className="bg-linear-to-br from-[#BF953F] via-[#FCF6BA] to-[#B38728] p-0.5 rounded-2xl shadow-[0_0_40px_rgba(191,149,63,0.3)]">
           
           <div className="bg-[#121212] p-8 rounded-[calc(1rem-1px)] w-full">
             <div className="text-center mb-8">
-              <div className="w-20 h-20 bg-gradient-to-tr from-[#BF953F] to-[#FCF6BA] rounded-full flex items-center justify-center mx-auto mb-4 text-black shadow-lg shadow-yellow-600/20">
+              <div className="w-20 h-20 bg-linear-to-tr from-[#BF953F] to-[#FCF6BA] rounded-full flex items-center justify-center mx-auto mb-4 text-black shadow-lg shadow-yellow-600/20">
                 <FaSun size={32} className="animate-pulse" />
               </div>
-              <h2 className="text-3xl font-black bg-gradient-to-b from-[#FCF6BA] to-[#BF953F] bg-clip-text text-transparent uppercase tracking-wider">
+              <h2 className="text-3xl font-black bg-linear-to-b from-[#FCF6BA] to-[#BF953F] bg-clip-text text-transparent uppercase tracking-wider">
                 เข้าสู่ระบบ
               </h2>
-              <div className="h-[2px] w-12 bg-[#D4AF37] mx-auto mt-2 rounded-full"></div>
+              <div className="h-0.5 w-12 bg-[#D4AF37] mx-auto mt-2 rounded-full"></div>
               <p className="text-gray-400 text-xs mt-3 tracking-widest font-light">LOTTERY GENERATOR PREMIUM</p>
             </div>
 
@@ -101,7 +101,7 @@ export const LoginPage = () => {
 
               <button 
                 type="submit" 
-                className="w-full mt-4 bg-gradient-to-r from-[#BF953F] via-[#FCF6BA] to-[#B38728] text-black py-4 rounded-xl font-black text-lg hover:brightness-110 active:scale-[0.98] transition-all shadow-[0_10px_20px_rgba(191,149,63,0.3)] uppercase"
+                className="w-full mt-4 bg-linear-to-r from-[#BF953F] via-[#FCF6BA] to-[#B38728] text-black py-4 rounded-xl font-black text-lg hover:brightness-110 active:scale-[0.98] transition-all shadow-[0_10px_20px_rgba(191,149,63,0.3)] uppercase"
               >
                 เข้าสู่ระบบ
               </button>

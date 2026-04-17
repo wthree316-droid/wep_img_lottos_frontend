@@ -13,6 +13,7 @@ import { waitForFonts } from '../utils/imageHelpers';
 import { apiClient } from '../config/api';
 import { DATA_KEYS } from '../config/constants';
 import type { Lottery, Template, GeneratePayload, GenerateResponse, TemplateSlot, User } from '../types';
+import toast from 'react-hot-toast';
 
 const formatDateThai = (dateStr: string) => {
   if (!dateStr) return "{วันที่}";
@@ -147,7 +148,7 @@ export const DashboardPage = () => {
         setLoading(false);
       } catch (err: any) {
         console.error(err);
-        alert('โหลดข้อมูลหวยไม่สำเร็จ (โปรดรีเฟรช): ' + (err.message || err));
+        toast.error('โหลดข้อมูลหวยไม่สำเร็จ (โปรดรีเฟรช): ' + (err.message || err));
         setLoading(false);
       }
     };
@@ -174,7 +175,7 @@ export const DashboardPage = () => {
   };
 
   const handleSaveGroup = () => {
-      if (selectedIds.size === 0) return alert("กรุณาติ๊กเลือกหวยอย่างน้อย 1 ใบก่อนบันทึกกลุ่ม");
+      if (selectedIds.size === 0) return toast.error("กรุณาติ๊กเลือกหวยอย่างน้อย 1 ใบก่อนบันทึกกลุ่ม");
       const name = prompt("ตั้งชื่อกลุ่มหวยนี้ (เช่น ชุดเช้า, ชุดฮานอย, รูปแบบที่ 1):");
       if (!name || name.trim() === "") return;
 
@@ -187,7 +188,7 @@ export const DashboardPage = () => {
       const updatedGroups = [...savedGroups, newGroup];
       setSavedGroups(updatedGroups);
       if (user) localStorage.setItem(`lotto_groups_${user.id}`, JSON.stringify(updatedGroups));
-      alert(`✅ บันทึกกลุ่ม "${name}" เรียบร้อยแล้ว`);
+      toast.success(`✅ บันทึกกลุ่ม "${name}" เรียบร้อยแล้ว`);
   };
 
   const handleApplyGroup = (group: SavedGroup) => {
@@ -215,8 +216,8 @@ export const DashboardPage = () => {
               if (currentUser.assigned_template_id) setCurrentTemplateId(currentUser.assigned_template_id);
               else if (myAvailableTemplates.length > 0 && myAvailableTemplates[0].owner_id === user.id) setCurrentTemplateId(myAvailableTemplates[0].id);
               setIsTemplateModalOpen(true);
-          } else { alert("คุณยังไม่มีธีมให้เลือก (โปรดสร้างแม่พิมพ์ใหม่ หรือติดต่อแอดมิน)"); }
-      } catch (e) { console.error(e); alert("โหลดข้อมูลไม่สำเร็จ"); }
+          } else { toast.error("คุณยังไม่มีธีมให้เลือก (โปรดสร้างแม่พิมพ์ใหม่ หรือติดต่อแอดมิน)"); }
+      } catch (e) { console.error(e); toast.error("โหลดข้อมูลไม่สำเร็จ"); }
   };
 
   const handleSelectTemplate = async (templateId: string) => { 
@@ -224,14 +225,14 @@ export const DashboardPage = () => {
           if (!user) return;
           await apiClient.put(`/api/users/${user.id}`, { assigned_template_id: templateId });
           setCurrentTemplateId(templateId);
-          alert("✅ เปลี่ยนธีมสำเร็จ! กำลังรีโหลด...");
+          toast.success("✅ เปลี่ยนธีมสำเร็จ! กำลังรีโหลด...");
           window.location.reload(); 
-      } catch (e) { console.error(e); alert("เปลี่ยนธีมไม่สำเร็จ"); }
+      } catch (e) { console.error(e); toast.error("เปลี่ยนธีมไม่สำเร็จ"); }
   };
 
   // 🚀 ฟังก์ชันโหลดเหมาเข่งแบบ Turbo
   const handleBatchDownload = async () => {
-    if (selectedIds.size === 0) return alert("กรุณาเลือกหวยอย่างน้อย 1 ใบ");
+    if (selectedIds.size === 0) return toast.error("กรุณาเลือกหวยอย่างน้อย 1 ใบ");
     setIsZipping(true);
     const zip = new JSZip();
     const folder = zip.folder(`Lotto-${commonDate}`);
@@ -387,10 +388,10 @@ export const DashboardPage = () => {
         const content = await zip.generateAsync({ type: 'blob' });
         saveAs(content, `Lotto-Set-${commonDate}.zip`);
 
-        if (failedItems.length > 0) alert(`สร้างเสร็จแล้ว แต่มีล้มเหลว ${failedItems.length} รายการ:\n${failedItems.join('\n')}`);
+        if (failedItems.length > 0) toast.success(`สร้างเสร็จแล้ว แต่มีล้มเหลว ${failedItems.length} รายการ:\n${failedItems.join('\n')}`);
 
     } catch (error: any) { 
-        alert("เกิดข้อผิดพลาด: " + (error.message || error)); 
+        toast.error("เกิดข้อผิดพลาด: " + (error.message || error)); 
     } 
     finally { setIsZipping(false); setProgress(''); }
   };
@@ -399,7 +400,7 @@ export const DashboardPage = () => {
     <div className="min-h-screen bg-[#050505] text-white font-sans pb-20 relative overflow-x-hidden">
       
       {/* 🌌 Background Mandala (แบบจางๆ ให้ดูขลัง) */}
-      <div className="fixed top-[-10%] right-[-10%] w-[600px] h-[600px] opacity-[0.3] pointer-events-none z-0">
+      <div className="fixed top-[-10%] right-[-10%] w-150 h-150 opacity-[0.3] pointer-events-none z-0">
         <svg viewBox="0 0 200 200" className="w-full h-full text-[#D4AF37] animate-spin-slow">
           <circle cx="100" cy="100" r="90" fill="none" stroke="currentColor" strokeWidth="0.5" strokeDasharray="10 5" />
           <circle cx="100" cy="100" r="70" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="5 5" />
@@ -412,10 +413,10 @@ export const DashboardPage = () => {
           <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h1 className="text-xl md:text-2xl font-black tracking-tight flex items-center gap-3">
-                 <div className="w-8 h-8 bg-gradient-to-tr from-[#BF953F] to-[#FCF6BA] rounded-md flex items-center justify-center text-black shadow-lg shadow-yellow-600/20">
+                 <div className="w-8 h-8 bg-linear-to-tr from-[#BF953F] to-[#FCF6BA] rounded-md flex items-center justify-center text-black shadow-lg shadow-yellow-600/20">
                    <FaLayerGroup size={16} />
                  </div>
-                 <span className="bg-gradient-to-r from-[#FCF6BA] via-[#D4AF37] to-[#BF953F] bg-clip-text text-transparent uppercase">Lotto Studio</span>
+                 <span className="bg-linear-to-r from-[#FCF6BA] via-[#D4AF37] to-[#BF953F] bg-clip-text text-transparent uppercase">Lotto Studio</span>
               </h1>
               <p className="text-xs md:text-sm text-gray-400 mt-1 flex items-center gap-1.5">
                  ยินดีต้อนรับ, <span className="text-[#D4AF37] font-bold bg-[#D4AF37]/10 border border-[#D4AF37]/30 px-2 py-0.5 rounded-md">{user?.name || user?.username}</span>
@@ -425,7 +426,7 @@ export const DashboardPage = () => {
             <div className="flex items-center gap-3 overflow-x-auto pb-1 hide-scrollbar">
               <button 
                   onClick={handleOpenTemplateModal}
-                  className="flex items-center gap-2 bg-[#1a1a1a] border border-[#D4AF37]/40 text-[#D4AF37] px-4 py-2 rounded-xl font-bold hover:bg-gradient-to-r hover:from-[#BF953F] hover:via-[#FCF6BA] hover:to-[#B38728] hover:text-black hover:border-transparent transition-all duration-300 text-sm whitespace-nowrap shadow-sm hover:shadow-[0_0_15px_rgba(212,175,55,0.4)]"
+                  className="flex items-center gap-2 bg-[#1a1a1a] border border-[#D4AF37]/40 text-[#D4AF37] px-4 py-2 rounded-xl font-bold hover:bg-linear-to-r hover:from-[#BF953F] hover:via-[#FCF6BA] hover:to-[#B38728] hover:text-black hover:border-transparent transition-all duration-300 text-sm whitespace-nowrap shadow-sm hover:shadow-[0_0_15px_rgba(212,175,55,0.4)]"
               >
                   <FaPalette /> ธีมแม่พิมพ์
               </button>
@@ -452,7 +453,7 @@ export const DashboardPage = () => {
                     onClick={() => setMode('single')}
                     className={`flex-1 py-2.5 font-bold rounded-lg transition-all duration-300 text-sm flex items-center justify-center gap-2 z-10 ${
                       mode === 'single' 
-                        ? 'bg-gradient-to-r from-[#BF953F] via-[#FCF6BA] to-[#B38728] text-black shadow-[0_0_15px_rgba(212,175,55,0.3)]' 
+                        ? 'bg-linear-to-r from-[#BF953F] via-[#FCF6BA] to-[#B38728] text-black shadow-[0_0_15px_rgba(212,175,55,0.3)]' 
                         : 'text-gray-500 hover:text-[#D4AF37]'
                     }`}
                 >
@@ -462,11 +463,11 @@ export const DashboardPage = () => {
                     onClick={() => setMode('batch')}
                     className={`flex-1 py-2.5 font-bold rounded-lg transition-all duration-300 text-sm flex items-center justify-center gap-2 z-10 ${
                       mode === 'batch' 
-                        ? 'bg-gradient-to-r from-[#BF953F] via-[#FCF6BA] to-[#B38728] text-black shadow-[0_0_15px_rgba(212,175,55,0.3)]' 
+                        ? 'bg-linear-to-r from-[#BF953F] via-[#FCF6BA] to-[#B38728] text-black shadow-[0_0_15px_rgba(212,175,55,0.3)]' 
                         : 'text-gray-500 hover:text-[#D4AF37]'
                     }`}
                 >
-                    📦 เหมาเข่ง (Batch)
+                    📦 เลือกทีละหลายใบ
                 </button>
             </div>
 
@@ -501,12 +502,16 @@ export const DashboardPage = () => {
                         className="bg-[#121212] rounded-2xl shadow-lg hover:shadow-[0_0_25px_rgba(212,175,55,0.2)] transition-all duration-300 transform hover:-translate-y-1.5 p-5 border border-[#D4AF37]/20 hover:border-[#D4AF37]/60 group flex flex-col items-center text-center cursor-pointer relative overflow-hidden"
                     >
                         {/* แสงฟุ้งสีทองด้านหลังตอน Hover (Glow Effect) */}
-                        <div className="absolute inset-0 bg-gradient-to-b from-[#D4AF37]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
+                        <div className="absolute inset-0 bg-linear-to-b from-[#D4AF37]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
 
                         {/* กรอบรูปวงกลม */}
                         <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-[#0a0a0a] mb-4 overflow-hidden border-2 border-[#D4AF37]/30 group-hover:border-[#D4AF37] shadow-inner group-hover:scale-110 transition-all duration-500 relative flex items-center justify-center z-10">
                             {lotto.templates?.background_url ? (
-                                <img src={lotto.templates.background_url} className="w-full h-full object-cover" />
+                                <img 
+                                    src={lotto.icon_url || lotto.templates?.background_url || "https://placehold.co/400x400/png?text=No+Image"} 
+                                    alt={lotto.name}
+                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                />
                             ) : (
                                 <div className="text-3xl opacity-30 grayscale group-hover:grayscale-0 transition-all">🎲</div>
                             )}
@@ -589,7 +594,7 @@ export const DashboardPage = () => {
                                     <div className="flex items-center gap-2 border border-[#D4AF37]/20 p-3 rounded-xl bg-[#0a0a0a] focus-within:border-[#D4AF37] focus-within:ring-1 ring-[#D4AF37] transition">
                                         <FaCalendarAlt className="text-[#D4AF37]/60 shrink-0" />
                                         {/* ใช้ [color-scheme:dark] เพื่อให้ Datepicker ของ Browser เป็นธีมมืด */}
-                                        <input type="date" value={commonDate} onChange={e => setCommonDate(e.target.value)} className="bg-transparent outline-none w-full text-sm font-medium text-white [color-scheme:dark]"/>
+                                        <input type="date" value={commonDate} onChange={e => setCommonDate(e.target.value)} className="bg-transparent outline-none w-full text-sm font-medium text-white scheme-dark"/>
                                     </div>
                                 </div>
                                 <div>
@@ -615,7 +620,7 @@ export const DashboardPage = () => {
                                         ? 'bg-[#1a1a1a] text-gray-600 border border-gray-800 cursor-not-allowed shadow-none' 
                                         : selectedIds.size === 0 
                                             ? 'bg-[#0a0a0a] text-gray-700 border border-gray-800 cursor-not-allowed shadow-none' 
-                                            : 'bg-gradient-to-r from-[#BF953F] via-[#FCF6BA] to-[#B38728] text-black hover:brightness-110 shadow-[0_0_20px_rgba(212,175,55,0.3)]'
+                                            : 'bg-linear-to-r from-[#BF953F] via-[#FCF6BA] to-[#B38728] text-black hover:brightness-110 shadow-[0_0_20px_rgba(212,175,55,0.3)]'
                                     }`}
                                 >
                                     {isZipping ? <div className="animate-spin h-5 w-5 border-2 border-gray-600 border-t-[#D4AF37] rounded-full"></div> : <FaDownload />}
@@ -674,7 +679,7 @@ export const DashboardPage = () => {
 
       {/* 🚀 1. ป๊อปอัป Loading (ตอนกำลังประมวลผลเหมาเข่ง) */}
       {isZipping && (
-        <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center backdrop-blur-md">
+        <div className="fixed inset-0 z-9999 flex flex-col items-center justify-center backdrop-blur-md">
             <div className="absolute inset-0 bg-[#050505]/90 z-40"></div>
             
             <div className="relative z-50 text-white text-center flex flex-col items-center max-w-md w-full px-4">
@@ -688,7 +693,7 @@ export const DashboardPage = () => {
                     </div>
                 </div>
 
-                <div className="text-3xl font-black mb-3 bg-clip-text text-transparent bg-gradient-to-r from-[#BF953F] via-[#FCF6BA] to-[#B38728] uppercase tracking-widest drop-shadow-[0_2px_10px_rgba(212,175,55,0.4)]">
+                <div className="text-3xl font-black mb-3 bg-clip-text text-transparent bg-linear-to-r from-[#BF953F] via-[#FCF6BA] to-[#B38728] uppercase tracking-widest drop-shadow-[0_2px_10px_rgba(212,175,55,0.4)]">
                     กำลังสร้างภาพ...
                 </div>
                 
@@ -709,11 +714,11 @@ export const DashboardPage = () => {
               <div className="bg-[#121212] rounded-3xl shadow-[0_0_40px_rgba(212,175,55,0.15)] border border-[#D4AF37]/30 w-full max-w-4xl flex flex-col overflow-hidden max-h-[90vh] animate-fade-in relative">
                   
                   {/* แสงฟุ้งพื้นหลัง Modal */}
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-32 bg-[#D4AF37] opacity-10 blur-[60px] pointer-events-none"></div>
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-125 h-32 bg-[#D4AF37] opacity-10 blur-[60px] pointer-events-none"></div>
 
                   <div className="flex justify-between items-center p-5 md:p-6 border-b border-[#D4AF37]/20 bg-[#0a0a0a]/50 relative z-10">
                       <h3 className="text-lg md:text-xl font-bold text-white flex items-center gap-3">
-                          <div className="bg-gradient-to-br from-[#BF953F] to-[#FCF6BA] p-2 rounded-lg text-black shadow-lg shadow-yellow-600/20">
+                          <div className="bg-linear-to-br from-[#BF953F] to-[#FCF6BA] p-2 rounded-lg text-black shadow-lg shadow-yellow-600/20">
                               <FaPalette />
                           </div>
                           เลือกธีมแม่พิมพ์นำโชค
@@ -736,7 +741,7 @@ export const DashboardPage = () => {
                                         : 'border border-[#D4AF37]/10 hover:border-[#D4AF37]/50'
                                     }`}
                                 >
-                                    <div className="aspect-[9/16] bg-[#0a0a0a] relative flex items-center justify-center">
+                                    <div className="aspect-9/16 bg-[#0a0a0a] relative flex items-center justify-center">
                                         {t.background_url ? ( 
                                             <img src={t.background_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" /> 
                                         ) : ( 
@@ -746,10 +751,10 @@ export const DashboardPage = () => {
                                             </div> 
                                         )}
                                         
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent opacity-80 group-hover:opacity-100 transition-opacity"></div>
+                                        <div className="absolute inset-0 bg-linear-to-t from-black via-black/20 to-transparent opacity-80 group-hover:opacity-100 transition-opacity"></div>
                                         
                                         {isActive && ( 
-                                            <div className="absolute top-3 right-3 bg-gradient-to-tr from-[#BF953F] to-[#FCF6BA] text-black rounded-full p-1.5 shadow-[0_0_15px_rgba(212,175,55,0.5)] z-10"> 
+                                            <div className="absolute top-3 right-3 bg-linear-to-tr from-[#BF953F] to-[#FCF6BA] text-black rounded-full p-1.5 shadow-[0_0_15px_rgba(212,175,55,0.5)] z-10"> 
                                                 <FaCheck size={14} /> 
                                             </div> 
                                         )}

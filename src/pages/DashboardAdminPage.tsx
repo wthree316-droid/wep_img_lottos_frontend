@@ -1,5 +1,3 @@
-// src/pages/DashboardAdminPage.tsx
-
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -7,8 +5,10 @@ import {
   FaTicketAlt, FaUserCog, FaTimes
 } from 'react-icons/fa';
 import { LogoutButton } from '../components/LogoutButton';
-import { apiClient } from '../config/api';
+import { apiClient, API_BASE_URL } from '../config/api';
 import type { User, Lottery } from '../types';
+import toast from 'react-hot-toast';
+
 
 export const DashboardAdminPage = () => {
   const [activeTab, setActiveTab] = useState<'users' | 'lotteries'>('users');
@@ -21,14 +21,15 @@ export const DashboardAdminPage = () => {
   const [editingUser, setEditingUser] = useState<User | null>(null); 
   const [formData, setFormData] = useState({
     username: '', password: '', name: '', 
-    assigned_template_id: '', allowed_template_ids: [] as string[]
+    assigned_template_id: '', allowed_template_ids: [] as string[],
+    is_suspended: false
   });
 
   // Modal State for Lottery
   const [isLotteryModalOpen, setIsLotteryModalOpen] = useState(false);
   const [editingLottery, setEditingLottery] = useState<Lottery | null>(null);
   const [lotteryFormData, setLotteryFormData] = useState({
-    name: '', template_id: '', closing_time: '', is_active: true
+    name: '', template_id: '', closing_time: '', is_active: true, icon_url: ''
   });
 
   useEffect(() => {
@@ -84,15 +85,14 @@ export const DashboardAdminPage = () => {
       } else {
         await apiClient.post('/api/users', payload);
       }
-      alert("✅ บันทึกข้อมูลสมาชิกสำเร็จ");
+      toast.success("บันทึกข้อมูลสมาชิกสำเร็จ"); // ✅ เปลี่ยน alert เป็น toast
       setIsModalOpen(false);
       fetchUsers();
       resetForm();
     } catch (error: any) {
-      alert("❌ เกิดข้อผิดพลาด: " + (error.message || error));
+      toast.error("เกิดข้อผิดพลาด: " + (error.message || error)); // ✅ เปลี่ยน alert เป็น toast
     }
   };
-
   const handleSaveLottery = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -100,7 +100,8 @@ export const DashboardAdminPage = () => {
             name: lotteryFormData.name,
             template_id: lotteryFormData.template_id || null, 
             is_active: lotteryFormData.is_active,
-            closing_time: lotteryFormData.closing_time ? new Date(lotteryFormData.closing_time).toISOString() : null
+            closing_time: lotteryFormData.closing_time ? new Date(lotteryFormData.closing_time).toISOString() : null,
+            icon_url: lotteryFormData.icon_url
         };
 
         if (editingLottery) {
@@ -108,11 +109,11 @@ export const DashboardAdminPage = () => {
         } else {
             await apiClient.post('/api/lotteries', payload);
         }
-        alert("✅ บันทึกข้อมูลหวยสำเร็จ");
+        toast.success("บันทึกข้อมูลหวยสำเร็จ"); // ✅ เปลี่ยน alert เป็น toast
         setIsLotteryModalOpen(false);
         fetchLotteries();
     } catch (error: any) {
-        alert("❌ บันทึกไม่สำเร็จ: " + (error.message || error));
+        toast.error("บันทึกไม่สำเร็จ: " + (error.message || error)); // ✅ เปลี่ยน alert เป็น toast
     }
   };
 
@@ -126,14 +127,15 @@ export const DashboardAdminPage = () => {
     setEditingUser(user);
     setFormData({
       username: user.username, password: '', name: user.name,
-      assigned_template_id: user.assigned_template_id || '', allowed_template_ids: user.allowed_template_ids || []
+      assigned_template_id: user.assigned_template_id || '', allowed_template_ids: user.allowed_template_ids || [],
+      is_suspended: user.is_suspended || false 
     });
     setIsModalOpen(true);
   };
 
   const openCreateLotteryModal = () => {
     setEditingLottery(null);
-    setLotteryFormData({ name: '', template_id: '', closing_time: '', is_active: true });
+    setLotteryFormData({ name: '', template_id: '', closing_time: '', is_active: true, icon_url: '' });
     setIsLotteryModalOpen(true);
   };
 
@@ -147,13 +149,14 @@ export const DashboardAdminPage = () => {
     }
     setLotteryFormData({
         name: lottery.name, template_id: lottery.template_id || '',
-        closing_time: closingTimeStr, is_active: lottery.is_active
+        closing_time: closingTimeStr, is_active: lottery.is_active,
+        icon_url: lottery.icon_url || ''
     });
     setIsLotteryModalOpen(true);
   };
 
   const resetForm = () => {
-    setFormData({ username: '', password: '', name: '', assigned_template_id: '', allowed_template_ids: [] });
+    setFormData({ username: '', password: '', name: '', assigned_template_id: '', allowed_template_ids: [], is_suspended: false });
   };
 
   return (
@@ -389,6 +392,24 @@ export const DashboardAdminPage = () => {
                 <label className="block text-sm font-bold text-gray-700 mb-1">รหัสผ่าน {editingUser && <span className="text-xs text-blue-500 font-normal ml-1 bg-blue-50 px-2 py-0.5 rounded-full">เว้นว่างถ้าไม่เปลี่ยน</span>}</label>
                 <input type="password" required={!editingUser} value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none placeholder:text-gray-300" placeholder="••••••••" />
               </div>
+              {/* ✅ โซนระงับการใช้งาน */}
+              <div className="pt-4 border-t border-gray-100 mt-2 mb-4">
+                  <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-red-100 bg-red-50/50 hover:border-red-200 transition">
+                      <div className="relative">
+                          <input 
+                              type="checkbox" 
+                              checked={formData.is_suspended || false} 
+                              onChange={e => setFormData({...formData, is_suspended: e.target.checked})} 
+                              className="sr-only" 
+                          />
+                          <div className={`block w-12 h-7 rounded-full transition-colors ${formData.is_suspended ? 'bg-red-500' : 'bg-gray-300'}`}></div>
+                          <div className={`dot absolute left-1 top-1 bg-white w-5 h-5 rounded-full transition-transform ${formData.is_suspended ? 'transform translate-x-5' : ''}`}></div>
+                      </div>
+                      <div className="font-bold text-red-700 text-sm">
+                          🚨 ระงับการใช้งาน (แบนไอดีนี้)
+                      </div>
+                  </label>
+              </div>
               <div className="flex gap-3 pt-6 mt-4">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-3 text-gray-600 font-bold bg-gray-100 rounded-xl hover:bg-gray-200 transition">ยกเลิก</button>
                 <button type="submit" className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 shadow-[0_4px_15px_rgba(37,99,235,0.3)] transition transform active:scale-95">บันทึก</button>
@@ -412,6 +433,39 @@ export const DashboardAdminPage = () => {
                 จัดการรายการหวย
              </h3>
              <form onSubmit={handleSaveLottery} className="space-y-4">
+                {/* ✅ โซนอัปโหลดรูปไอคอนหวย */}
+                <div className="space-y-2 mb-4">
+                    <label className="text-sm font-bold text-gray-600">รูปภาพหน้าเลือกหวย (Icon)</label>
+                    <div className="flex items-center gap-4">
+                        {lotteryFormData.icon_url ? (
+                            <img src={lotteryFormData.icon_url} alt="Icon" className="w-16 h-16 rounded-xl object-cover border-2 border-blue-200" />
+                        ) : (
+                            <div className="w-16 h-16 rounded-xl bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 text-xs">ไม่มีรูป</div>
+                        )}
+                        <div className="flex-1">
+                            <input 
+                                type="file" 
+                                accept="image/*"
+                                onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (!file) return;
+                                    const formData = new FormData();
+                                    formData.append('file', file);
+                                    try {
+                                        toast.loading("กำลังอัปโหลด...", { id: "upload" });
+                                        const res = await fetch(`${API_BASE_URL}/api/upload`, { method: 'POST', body: formData });
+                                        const data = await res.json();
+                                        setLotteryFormData({...lotteryFormData, icon_url: data.url});
+                                        toast.success("อัปโหลดรูปสำเร็จ!", { id: "upload" });
+                                    } catch (err) {
+                                        toast.error("อัปโหลดไม่สำเร็จ", { id: "upload" });
+                                    }
+                                }}
+                                className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                            />
+                        </div>
+                    </div>
+                </div>
                 <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1">ชื่อหวย (เช่น ฮานอยพิเศษ)</label>
                     <input type="text" value={lotteryFormData.name} onChange={e => setLotteryFormData({...lotteryFormData, name: e.target.value})} className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 outline-none" required />

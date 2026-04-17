@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import type { ReactNode } from 'react';
+import { Toaster } from 'react-hot-toast';
 import { AdminEditorPage } from './pages/AdminEditorPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { DashboardAdminPage } from './pages/DashboardAdminPage';
@@ -31,6 +32,30 @@ const ProtectedRoute = ({ children, requireAdmin = false }: { children: ReactNod
 function App() {
   return (
     <BrowserRouter>
+      {/* 🌟 ใส่ Toaster ตรงนี้ พร้อมตั้งค่าเป็นธีม ดำ-ทอง */}
+        <Toaster 
+          position="top-center"
+          toastOptions={{
+            style: {
+              background: '#121212',
+              color: '#D4AF37',
+              border: '1px solid rgba(212, 175, 55, 0.3)',
+              boxShadow: '0 4px 30px rgba(0, 0, 0, 0.5)',
+            },
+            success: {
+              iconTheme: { primary: '#D4AF37', secondary: '#121212' },
+            },
+            error: {
+              style: { 
+                background: '#1a0505', 
+                color: '#ff6b6b', 
+                border: '1px solid rgba(255, 107, 107, 0.3)' 
+              },
+              iconTheme: { primary: '#ff6b6b', secondary: '#1a0505' },
+            },
+          }}
+        />
+        
       <Routes>
         {/* 🔓 หน้า Login (เข้าได้ทุกคน) */}
         <Route path="/login" element={<LoginPage />} />

@@ -11,6 +11,7 @@ import { preloadImage, waitForFonts } from '../utils/imageHelpers';
 import { apiClient } from '../config/api';
 import { DATA_KEYS } from '../config/constants';
 import type { GeneratePayload, GenerateResponse, Template, User } from '../types';
+import toast from 'react-hot-toast';
 
 const formatDateThai = (dateStr: string) => {
   if (!dateStr) return "{วันที่}";
@@ -74,7 +75,7 @@ export const UserGeneratorPage = () => {
         }
 
         if (!template) {
-            alert("ไม่พบแม่พิมพ์สำหรับหวยรายการนี้");
+            toast.error("ไม่พบแม่พิมพ์สำหรับหวยรายการนี้");
             setLoading(false);
             return;
         }
@@ -138,7 +139,7 @@ export const UserGeneratorPage = () => {
         setLoading(false);
       } catch (err) {
         console.error(err);
-        alert("โหลดข้อมูลผิดพลาด");
+        toast.error("โหลดข้อมูลผิดพลาด");
         setLoading(false);
       }
     };
@@ -192,7 +193,7 @@ export const UserGeneratorPage = () => {
       });
 
     } catch (error: any) {
-      alert("คำนวณพลาด: " + (error.message || error));
+      toast.error("คำนวณพลาด: " + (error.message || error));
     } finally {
       setIsGenerating(false);
     }
@@ -217,7 +218,7 @@ export const UserGeneratorPage = () => {
       link.click();
     } catch (error) {
       console.error(error);
-      alert('บันทึกรูปไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
+      toast.error('บันทึกรูปไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
     } finally {
       setIsDownloading(false);
     }
@@ -244,8 +245,8 @@ export const UserGeneratorPage = () => {
         <Link to="/" className="flex items-center gap-2 text-gray-400 hover:text-[#D4AF37] font-bold transition p-2 rounded-lg hover:bg-[#1a1a1a]">
           <FaArrowLeft /> <span className="hidden sm:inline">กลับหน้าหลัก</span>
         </Link>
-        <h1 className="font-black text-lg md:text-xl flex items-center gap-2 bg-gradient-to-r from-[#FCF6BA] via-[#D4AF37] to-[#BF953F] bg-clip-text text-transparent uppercase tracking-wider">
-           Lotto Studio
+        <h1 className="font-black text-lg md:text-xl flex items-center gap-2 bg-linear-to-r from-[#FCF6BA] via-[#D4AF37] to-[#BF953F] bg-clip-text text-transparent uppercase tracking-wider">
+           สร้างใบแนวทาง
         </h1>
         <div className="flex items-center gap-2 text-xs md:text-sm text-gray-400 bg-[#0a0a0a] px-3 py-1.5 rounded-full border border-[#D4AF37]/20">
              <FaUserCircle className="text-[#D4AF37]" />
@@ -272,7 +273,7 @@ export const UserGeneratorPage = () => {
                  type="date"
                  value={selectedDate}
                  onChange={(e) => setSelectedDate(e.target.value)}
-                 className="w-full p-2.5 bg-[#1a1a1a] border border-gray-800 rounded-xl text-white outline-none focus:ring-1 focus:ring-[#D4AF37] focus:border-[#D4AF37] cursor-pointer shadow-inner [color-scheme:dark]"
+                 className="w-full p-2.5 bg-[#1a1a1a] border border-gray-800 rounded-xl text-white outline-none focus:ring-1 focus:ring-[#D4AF37] focus:border-[#D4AF37] cursor-pointer shadow-inner scheme-dark"
                />
             </div>
 
@@ -296,7 +297,7 @@ export const UserGeneratorPage = () => {
                   onClick={handleGenerate}
                   disabled={isGenerating}
                   className={`w-full py-4 rounded-xl font-black uppercase tracking-wider text-black text-[15px] flex items-center justify-center gap-2 transition-all active:scale-95 ${
-                    isGenerating ? 'bg-gray-600 text-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-[#BF953F] via-[#FCF6BA] to-[#B38728] hover:brightness-110 shadow-[0_0_15px_rgba(212,175,55,0.2)]'
+                    isGenerating ? 'bg-gray-600 text-gray-400 cursor-not-allowed' : 'bg-linear-to-r from-[#BF953F] via-[#FCF6BA] to-[#B38728] hover:brightness-110 shadow-[0_0_15px_rgba(212,175,55,0.2)]'
                   }`}
                 >
                   {isGenerating ? (
@@ -355,16 +356,16 @@ export const UserGeneratorPage = () => {
                         {/* Default Background */}
                         <div 
                             onClick={() => handleSelectBackground(templateData.background_url, 'default')}
-                            className={`cursor-pointer rounded-xl overflow-hidden border-2 transition-all relative aspect-[9/16] group bg-[#0a0a0a] ${
+                            className={`cursor-pointer rounded-xl overflow-hidden border-2 transition-all relative aspect-9/16 group bg-[#0a0a0a] ${
                                 activeBgId === 'default' ? 'border-[#D4AF37] shadow-[0_0_15px_rgba(212,175,55,0.3)]' : 'border-transparent hover:border-gray-600'
                             }`}
                         >
                             <img src={templateData.background_url} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
-                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent pt-6 pb-2 px-1 text-gray-300 text-[10px] text-center truncate font-medium">
+                            <div className="absolute bottom-0 left-0 right-0 bg-linear-to-t from-black to-transparent pt-6 pb-2 px-1 text-gray-300 text-[10px] text-center truncate font-medium">
                                 มาตรฐาน
                             </div>
                             {activeBgId === 'default' && (
-                                <div className="absolute top-2 right-2 bg-gradient-to-tr from-[#BF953F] to-[#FCF6BA] text-black rounded-full p-1 shadow-md">
+                                <div className="absolute top-2 right-2 bg-linear-to-tr from-[#BF953F] to-[#FCF6BA] text-black rounded-full p-1 shadow-md">
                                     <FaCheck size={10} />
                                 </div>
                             )}
@@ -375,16 +376,16 @@ export const UserGeneratorPage = () => {
                             <div 
                                 key={bg.id}
                                 onClick={() => handleSelectBackground(bg.url, bg.id)}
-                                className={`cursor-pointer rounded-xl overflow-hidden border-2 transition-all relative aspect-[9/16] group bg-[#0a0a0a] ${
+                                className={`cursor-pointer rounded-xl overflow-hidden border-2 transition-all relative aspect-9/16 group bg-[#0a0a0a] ${
                                     activeBgId === bg.id ? 'border-[#D4AF37] shadow-[0_0_15px_rgba(212,175,55,0.3)]' : 'border-transparent hover:border-gray-600'
                                 }`}
                             >
                                 <img src={bg.url} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
-                                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent pt-6 pb-2 px-1 text-gray-300 text-[10px] text-center truncate font-medium">
+                                <div className="absolute bottom-0 left-0 right-0 bg-linear-to-t from-black to-transparent pt-6 pb-2 px-1 text-gray-300 text-[10px] text-center truncate font-medium">
                                     {bg.name}
                                 </div>
                                 {activeBgId === bg.id && (
-                                    <div className="absolute top-2 right-2 bg-gradient-to-tr from-[#BF953F] to-[#FCF6BA] text-black rounded-full p-1 shadow-md">
+                                    <div className="absolute top-2 right-2 bg-linear-to-tr from-[#BF953F] to-[#FCF6BA] text-black rounded-full p-1 shadow-md">
                                         <FaCheck size={10} />
                                     </div>
                                 )}

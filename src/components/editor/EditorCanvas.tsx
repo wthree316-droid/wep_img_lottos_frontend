@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Stage, Layer, Image as KonvaImage, Text, Transformer, Rect } from 'react-konva';
+import { Stage, Layer, Image as KonvaImage, Text, Transformer, Group, Rect } from 'react-konva';
 import useImage from 'use-image';
 import { useEditorStore } from '../../stores/useEditorStore';
 
@@ -92,6 +92,15 @@ export const EditorCanvas = ({ readOnly = false, onStageRef }: EditorCanvasProps
     }
   };
 
+  // ✅ เพิ่มเกราะป้องกัน: ถ้าขนาดไม่ถูกต้อง ไม่ต้อง Render Canvas ออกมาเลย
+  if (canvasConfig.width <= 0 || canvasConfig.height <= 0) {
+    return (
+        <div className="flex items-center justify-center text-gray-400 text-sm">
+            รอกำหนดขนาดที่ถูกต้อง...
+        </div>
+    );
+  }
+
   return (
     <div 
         ref={containerRef} // ✅ ผูก Ref ไว้ตรงนี้เพื่อดึงขนาดหน้าจอ
@@ -154,6 +163,10 @@ export const EditorCanvas = ({ readOnly = false, onStageRef }: EditorCanvasProps
                         x={x} y={y}
                         width={w} height={h}
                         draggable={!readOnly}
+                        // ✅ Fix ข้อ 9: เพิ่มการรองรับขอบให้ QR Code
+                        stroke={el.style_config.stroke}
+                        strokeWidth={el.style_config.stroke ? (el.style_config.strokeWidth || 2) : 0}
+                        
                         onClick={() => !readOnly && selectElement(el.id)}
                         onTap={() => !readOnly && selectElement(el.id)}
                         onDragEnd={(e: any) => {
@@ -172,7 +185,7 @@ export const EditorCanvas = ({ readOnly = false, onStageRef }: EditorCanvasProps
                                 pos_x: toPct(node.x(), canvasConfig.width),
                                 pos_y: toPct(node.y(), canvasConfig.height),
                                 width: toPct(node.width() * scaleX, canvasConfig.width),
-                                height: toPct(node.height() * scaleY, canvasConfig.height),
+                                height: toPct(node.height() * scaleY, canvasConfig.height), // ✅ Fix ข้อ 8: ให้ความสูงขยายตามด้วย
                             });
                         }}
                      />
@@ -202,58 +215,77 @@ export const EditorCanvas = ({ readOnly = false, onStageRef }: EditorCanvasProps
                    }
 
                    return (
-                     <Text
+                     // ✅ Fix ข้อ 3: หุ้ม Text ด้วย Group เพื่อให้รองรับ Rect (สีพื้นหลัง)
+                     <Group
                         key={el.id}
                         id={el.id}
                         name={el.id}
-                        text={el.label_text}
                         x={x} y={y}
                         width={w} height={h}
-                        fontSize={el.style_config.fontSize}
-                        fontFamily={el.style_config.fontFamily}
-                        
-                        fill={isGradient ? undefined : currentColors[0]}
-                        fillPriority={isGradient ? 'linear-gradient' : 'color'}
-                        fillLinearGradientStartPoint={{ x: 0, y: 0 }}
-                        fillLinearGradientEndPoint={{ x: 0, y: h }}
-                        fillLinearGradientColorStops={colorStops}
-                        
-                        align={el.style_config.textAlign}
-                        fontStyle={el.style_config.fontWeight}
-                        stroke={el.style_config.stroke}
-                        strokeWidth={el.style_config.stroke ? (el.style_config.strokeWidth || 1) : 0}
-                        shadowColor={shadowColor}
-                        shadowBlur={shadowBlur}
-                        shadowOffsetX={shadowOffsetX}
-                        shadowOffsetY={shadowOffsetY}
-                        verticalAlign="middle"
-                        padding={10} 
-                        lineHeight={1.4}
                         draggable={!readOnly}
                         onClick={() => !readOnly && selectElement(el.id)}
                         onTap={() => !readOnly && selectElement(el.id)}
-                        onDragEnd={(e) => {
+                        onDragEnd={(e: any) => {
                             updateElement(el.id, {
                                 pos_x: toPct(e.target.x(), canvasConfig.width),
                                 pos_y: toPct(e.target.y(), canvasConfig.height),
                             });
                         }}
-                        onTransformEnd={(e) => {
+                        onTransformEnd={(e: any) => {
                             const node = e.target;
                             const scaleX = node.scaleX();
+                            const scaleY = node.scaleY(); // ดึงค่าการขยายแนวตั้งมาด้วย
                             node.scaleX(1);
                             node.scaleY(1);
+                            // ✅ ใช้ค่า scale ที่มากที่สุด เพื่อให้ฟอนต์ขยายสมมาตร ไม่บี้แบน
+                            const uniformScale = Math.max(scaleX, scaleY);
+
                             updateElement(el.id, {
                                 pos_x: toPct(node.x(), canvasConfig.width),
                                 pos_y: toPct(node.y(), canvasConfig.height),
                                 width: toPct(node.width() * scaleX, canvasConfig.width),
+                                height: toPct(node.height() * scaleY, canvasConfig.height), // ✅ Fix ข้อ 8: ป้องกันเลขขาดเมื่อขยายลงล่าง
                                 style_config: {
                                     ...el.style_config,
-                                    fontSize: Math.round(el.style_config.fontSize * scaleX)
+                                    fontSize: Math.round(el.style_config.fontSize * uniformScale)
                                 }
                             });
                         }}
-                     />
+                     >
+                        {/* ✅ Fix ข้อ 3: เพิ่มพื้นหลังให้ข้อความ (Background Color) */}
+                        {el.style_config.backgroundColor && (
+                            <Rect 
+                                width={w} height={h} 
+                                fill={el.style_config.backgroundColor} 
+                                cornerRadius={4} 
+                            />
+                        )}
+
+                        <Text
+                            text={el.label_text}
+                            width={w} height={h}
+                            fontSize={el.style_config.fontSize}
+                            fontFamily={el.style_config.fontFamily}
+                            
+                            fill={isGradient ? undefined : currentColors[0]}
+                            fillPriority={isGradient ? 'linear-gradient' : 'color'}
+                            fillLinearGradientStartPoint={{ x: 0, y: 0 }}
+                            fillLinearGradientEndPoint={{ x: 0, y: h }}
+                            fillLinearGradientColorStops={colorStops}
+                            
+                            align={el.style_config.textAlign}
+                            fontStyle={el.style_config.fontWeight}
+                            stroke={el.style_config.stroke}
+                            strokeWidth={el.style_config.stroke ? (el.style_config.strokeWidth || 1) : 0}
+                            shadowColor={shadowColor}
+                            shadowBlur={shadowBlur}
+                            shadowOffsetX={shadowOffsetX}
+                            shadowOffsetY={shadowOffsetY}
+                            verticalAlign="middle"
+                            padding={10} 
+                            lineHeight={1.4}
+                        />
+                     </Group>
                    );
                 }
               })}
@@ -265,6 +297,8 @@ export const EditorCanvas = ({ readOnly = false, onStageRef }: EditorCanvasProps
                   anchorCornerRadius={3}
                   borderStrokeWidth={1.5}
                   padding={5}
+                  keepRatio={true} // ✅ เพิ่มบรรทัดนี้: บังคับรักษาสัดส่วนเสมอ
+                  enabledAnchors={['top-left', 'top-right', 'bottom-left', 'bottom-right']} // ✅ เพิ่มบรรทัดนี้: ให้ดึงได้แค่มุม 4 มุม ป้องกันผู้ใช้บีบด้านข้างจนกล่องพัง
                   boundBoxFunc={(oldBox, newBox) => {
                     if (newBox.width < 20 || newBox.height < 20) return oldBox;
                     return newBox;

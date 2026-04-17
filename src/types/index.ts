@@ -1,7 +1,3 @@
-/**
- * TypeScript Type Definitions
- */
-
 export interface TemplateSlot {
   id: string;
   template_id: string;
@@ -46,6 +42,7 @@ export interface User {
   // ✅ เพิ่มฟิลด์ใหม่
   custom_line_id?: string;
   custom_qr_code_url?: string;
+  is_suspended?: boolean;
   created_at: string;
 }
 
@@ -72,7 +69,8 @@ export interface Lottery {
   template_id: string;
   is_active: boolean;
   created_at: string;
-  closing_time?: string; // ✅ เพิ่ม
+  closing_time?: string;
+  icon_url?: string;
   templates?: {
     background_url: string;
     base_width: number;
