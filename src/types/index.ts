@@ -93,3 +93,10 @@ export interface GeneratePayload {
 export interface GenerateResponse {
   results: Record<string, string>;
 }
+
+export interface LottoAsset {
+  id: string;
+  name: string;
+  url: string;
+  created_at: string;
+}

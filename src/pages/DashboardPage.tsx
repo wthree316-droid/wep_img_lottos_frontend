@@ -34,21 +34,27 @@ const loadNativeImage = (url: string): Promise<HTMLImageElement> => {
     });
 };
 
+// ✅ ฟังก์ชันตั้งเวลาแบบใหม่ (ใช้แค่ เวลา ชั่วโมง:นาที)
 const CountdownTimer = ({ targetDate }: { targetDate: string }) => {
     const [timeLeft, setTimeLeft] = useState("");
     const [isExpired, setIsExpired] = useState(false);
 
     useEffect(() => {
+        if (!targetDate) return;
+        // แยกเวลา (เช่น "15:30" เป็น 15 กับ 30)
+        const [hours, minutes] = targetDate.split(':').map(Number);
+
         const calculateTimeLeft = () => {
-            const difference = +new Date(targetDate) - +new Date();
+            const now = new Date();
+            const target = new Date();
+            // ตั้งเป้าหมายเป็น วันนี้ ตามเวลาที่ระบุ
+            target.setHours(hours, minutes, 0, 0);
+
+            const difference = target.getTime() - now.getTime();
             if (difference > 0) {
-                const hours = Math.floor((difference / (1000 * 60 * 60))); 
-                const minutes = Math.floor((difference / 1000 / 60) % 60);
-                const seconds = Math.floor((difference / 1000) % 60);
-                
-                const h = hours.toString().padStart(2, '0');
-                const m = minutes.toString().padStart(2, '0');
-                const s = seconds.toString().padStart(2, '0');
+                const h = Math.floor((difference / (1000 * 60 * 60))).toString().padStart(2, '0');
+                const m = Math.floor((difference / 1000 / 60) % 60).toString().padStart(2, '0');
+                const s = Math.floor((difference / 1000) % 60).toString().padStart(2, '0');
                 
                 setTimeLeft(`${h}:${m}:${s}`);
                 setIsExpired(false);
@@ -69,7 +75,7 @@ const CountdownTimer = ({ targetDate }: { targetDate: string }) => {
             ? 'bg-black/50 text-gray-600 border-gray-800' 
             : 'bg-red-950/40 text-red-400 animate-pulse border-red-500/30 shadow-[0_0_10px_rgba(239,68,68,0.1)]'
         }`}>
-            <FaClock size={10} /> {timeLeft}
+            <FaClock size={10} /> {isExpired ? 'ปิดรับแล้ว' : timeLeft}
         </span>
     );
 };
@@ -247,8 +253,6 @@ export const DashboardPage = () => {
         const bgCache: Record<string, HTMLImageElement> = {};
         const templateCache: Record<string, Template> = {};
 
-        // ✅ 1. โหลด Template และรูปภาพ "ทั้งหมด" ที่จำเป็นต้องใช้ เตรียมไว้ก่อนเลย
-        // (เทคนิคป้องกัน Race Condition ไม่ให้ยิง API ขอแม่พิมพ์เดิมซ้ำซ้อน)
         const uniqueTemplateIds = [...new Set(selectedLotteries.map(l => l.template_id).filter(id => id))];
         
         for (const tId of uniqueTemplateIds) {
@@ -263,12 +267,10 @@ export const DashboardPage = () => {
 
         setProgress(`กำลังคำนวณสูตรหวย (0/${selectedLotteries.length})...`);
 
-        // ✅ 2. Parallel API: ยิง API คำนวณเลขหวย "พร้อมกันทุกใบ" (ตอนนี้จะไม่ชนกันแล้ว)
         const generatePromises = selectedLotteries.map(async (lotto) => {
             let templateId = lotto.template_id; 
             if (!templateId) throw new Error("หวยนี้ไม่มีแม่พิมพ์");
 
-            // ดึงจาก Cache ที่เตรียมไว้แล้ว 100%
             const template = templateCache[templateId];
 
             const genPayload: GeneratePayload = {
@@ -287,7 +289,6 @@ export const DashboardPage = () => {
             return { lotto, template, genData };
         });
 
-        // รอผลลัพธ์คำนวณทั้งหมด
         const generatedResults = await Promise.allSettled(generatePromises);
 
         for (let i = 0; i < generatedResults.length; i++) {
@@ -494,45 +495,55 @@ export const DashboardPage = () => {
           </div>
         ) : (
           <div className="animate-fade-in">
+            
+            {/* ✅ ส่วนที่แก้ Error แล้ว: โหมดเลือกทีละใบ (การ์ดเต็มจอ) */}
             {mode === 'single' && (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
                     {filteredLotteries.map((lotto) => (
                     <Link 
                         key={lotto.id} to={`/play/${lotto.id}`}
-                        className="bg-[#121212] rounded-2xl shadow-lg hover:shadow-[0_0_25px_rgba(212,175,55,0.2)] transition-all duration-300 transform hover:-translate-y-1.5 p-5 border border-[#D4AF37]/20 hover:border-[#D4AF37]/60 group flex flex-col items-center text-center cursor-pointer relative overflow-hidden"
+                        className="group relative flex flex-col justify-end overflow-hidden rounded-2xl border border-[#D4AF37]/20 bg-[#0a0a0a] shadow-lg transition-all duration-500 hover:-translate-y-2 hover:border-[#D4AF37] hover:shadow-[0_15px_30px_rgba(212,175,55,0.25)] aspect-4/2"
                     >
-                        {/* แสงฟุ้งสีทองด้านหลังตอน Hover (Glow Effect) */}
-                        <div className="absolute inset-0 bg-linear-to-b from-[#D4AF37]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
-
-                        {/* กรอบรูปวงกลม */}
-                        <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-[#0a0a0a] mb-4 overflow-hidden border-2 border-[#D4AF37]/30 group-hover:border-[#D4AF37] shadow-inner group-hover:scale-110 transition-all duration-500 relative flex items-center justify-center z-10">
-                            {lotto.templates?.background_url ? (
+                        {/* 🖼️ 1. เลเยอร์รูปภาพพื้นหลัง (เต็มการ์ด) */}
+                        <div className="absolute inset-0 z-0 overflow-hidden">
+                            {lotto.icon_url ? (
                                 <img 
-                                    src={lotto.icon_url || lotto.templates?.background_url || "https://placehold.co/400x400/png?text=No+Image"} 
+                                    src={lotto.icon_url} 
                                     alt={lotto.name}
-                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                    className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
                                 />
                             ) : (
-                                <div className="text-3xl opacity-30 grayscale group-hover:grayscale-0 transition-all">🎲</div>
+                                <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-[#1a1a1a] to-[#050505]">
+                                    <div className="text-5xl opacity-30 transition-all duration-500 group-hover:opacity-80 group-hover:drop-shadow-[0_0_15px_rgba(212,175,55,0.8)] group-hover:scale-110">🎲</div>
+                                </div>
                             )}
                         </div>
 
-                        {/* ชื่อหวย */}
-                        <h3 className="font-bold text-gray-300 text-sm md:text-base group-hover:text-[#D4AF37] transition-colors line-clamp-2 leading-snug mb-3 z-10">
-                            {lotto.name}
-                        </h3>
+                        {/* 🌑 2. เลเยอร์เงาดำไล่ระดับ (Overlay) ป้องกันรูปสว่างกลืนตัวหนังสือ */}
+                        <div className="absolute inset-0 z-10 bg-gradient-to-t from-black via-black/50 to-transparent opacity-90 transition-opacity duration-300 group-hover:opacity-100"></div>
 
-                        {/* เวลาปิดรับ */}
-                        {lotto.closing_time && (
-                            <div className="mt-auto z-10 w-full">
-                                <CountdownTimer targetDate={lotto.closing_time} />
-                            </div>
-                        )}
+                        {/* ✨ เลเยอร์แสงฟุ้งสีทองตกแต่งด้านบน (Glow Effect) */}
+                        <div className="absolute inset-0 z-10 bg-[radial-gradient(ellipse_at_top,var(--tw-gradient-stops))] from-[#D4AF37]/20 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100 pointer-events-none"></div>
+
+                        {/* 📝 3. เลเยอร์เนื้อหา (ชื่อหวย & เวลา) */}
+                        <div className="relative z-20 w-full p-4 flex flex-col items-center text-center translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
+                            <h3 className="mb-3 text-sm md:text-base font-bold text-gray-200 transition-colors duration-300 group-hover:text-[#D4AF37] line-clamp-2 drop-shadow-md">
+                                {lotto.name}
+                            </h3>
+
+                            {/* เวลาปิดรับ */}
+                            {lotto.closing_time && (
+                                <div className="w-full transform transition-all duration-300">
+                                    <CountdownTimer targetDate={lotto.closing_time} />
+                                </div>
+                            )}
+                        </div>
                     </Link>
                     ))}
                 </div>
             )}
 
+            {/* โหมดเลือกทีละหลายใบ (Batch) */}
             {mode === 'batch' && (
                 <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
                     
